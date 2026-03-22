@@ -25,6 +25,25 @@ You must return ONLY a JSON object with the following structure:
   "confidence": 0.0 to 1.0 (FLOAT)
 }}
 
-CRITICAL: Do not include any conversational text before or after the JSON.
+CRITICAL: Do not include any conversational text before or after the JSON."""
 
-System time: {system_time}"""
+SRE_REVIEWER_PROMPT = """You are a Lead Site Reliability Engineer.
+Your task is to review the following Airflow error analysis for accuracy, completeness, and clarity.
+
+[Initial Analysis]:
+{analysis}
+
+[Guidelines]:
+1. Check if the 'error_id' matches the log patterns correctly.
+2. Ensure the 'technical_root_cause' is truly technical and explains the failure in depth.
+3. Verify if the 'resolution_step' is actionable and correct.
+4. If the analysis is excellent, approve it.
+5. If there are flaws or missing details, provide constructive feedback and request refinement.
+
+Return a JSON object with:
+{{
+  "is_approved": true/false,
+  "feedback": "Detailed feedback if rejected, otherwise 'LGTM'."
+}}
+
+CRITICAL: Return ONLY JSON."""

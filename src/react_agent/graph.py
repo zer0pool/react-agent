@@ -13,6 +13,7 @@ from langgraph.prebuilt import ToolNode
 from langgraph.runtime import Runtime
 
 from react_agent.context import Context
+from react_agent.prompts import SRE_REVIEWER_PROMPT
 from react_agent.state import InputState, State
 from react_agent.tools import TOOLS
 from react_agent.utils import load_chat_model
@@ -141,6 +142,60 @@ async def preprocess_log(
     return {"raw_log": final_log, "messages": new_messages}
 
 
+async def review_analysis(
+    state: State, runtime: Runtime[Context]
+) -> Dict[str, Any]:
+    """Reviews the agent's analysis and requests refinement if necessary."""
+    # Prevent infinite loops: only review once.
+    if state.is_refined:
+        return {}
+
+    # 1. Get the last message (the analysis report)
+    last_message = state.messages[-1]
+    analysis_content = last_message.content
+
+    # 2. Call the model with the reviewer prompt
+    model = load_chat_model(runtime.context.model)
+    prompt = SRE_REVIEWER_PROMPT.format(analysis=analysis_content)
+
+    response = await model.ainvoke([{"role": "user", "content": prompt}])
+
+    try:
+        # Heuristic for JSON extraction from model output
+        content = response.content
+        if "```json" in content:
+            content = content.split("```json")[-1].split("```")[0]
+        elif "```" in content:
+             content = content.split("```")[-1].split("```")[0]
+        
+        review_data = json.loads(content.strip())
+        
+        if not review_data.get("is_approved", True):
+            feedback = review_data.get("feedback", "Please refine the analysis.")
+            # Inject a refinement request into the conversation
+            feedback_msg = HumanMessage(
+                content=f"Review Feedback: {feedback}\nPlease refine the analysis and include a 'metadata' field in your JSON output with 'is_refined': true and 'review_feedback': '{feedback}'."
+            )
+            return {
+                "messages": [feedback_msg],
+                "is_refined": True,
+                "review_feedback": feedback
+            }
+    except Exception:
+        pass
+
+    return {}
+
+
+def route_after_review(state: State) -> Literal["__end__", "call_model"]:
+    """Determines if the graph should end or go back for refinement."""
+    # If the last message is from a Human (the reviewer feedback), we go back to call_model
+    if state.messages and isinstance(state.messages[-1], HumanMessage):
+        if "Review Feedback" in state.messages[-1].content:
+            return "call_model"
+    return "__end__"
+
+
 def route_after_regex(state: State) -> Literal["preprocess_log", "__end__"]:
     """Routes based on whether regex found a match."""
     # If the last message is an AIMessage containing our JSON report, we are done
@@ -163,6 +218,7 @@ builder = StateGraph(State, input_schema=InputState, context_schema=Context)
 builder.add_node("regex_precheck", regex_precheck)
 builder.add_node("preprocess_log", preprocess_log)
 builder.add_node("call_model", call_model)
+builder.add_node("review_analysis", review_analysis)
 builder.add_node("tools", ToolNode(TOOLS))
 
 # 1. Entrypoint is now strictly the regex precheck
@@ -175,8 +231,8 @@ builder.add_conditional_edges("regex_precheck", route_after_regex)
 builder.add_edge("preprocess_log", "call_model")
 
 
-# 3. From call_model, we route to either TOOLS or END
-def route_model_output(state: State) -> Literal["__end__", "tools"]:
+# 3. From call_model, we route to either TOOLS or REVIEW
+def route_model_output(state: State) -> Literal["review_analysis", "tools"]:
     """Determine the next node based on the model's output."""
     last_message = state.messages[-1]
     if not isinstance(last_message, AIMessage):
@@ -184,11 +240,12 @@ def route_model_output(state: State) -> Literal["__end__", "tools"]:
             f"Expected AIMessage in output edges, but got {type(last_message).__name__}"
         )
     if not last_message.tool_calls:
-        return "__end__"
+        return "review_analysis"
     return "tools"
 
 
 builder.add_conditional_edges("call_model", route_model_output)
+builder.add_conditional_edges("review_analysis", route_after_review)
 builder.add_edge("tools", "call_model")
 
 # Compile the builder into an executable graph
