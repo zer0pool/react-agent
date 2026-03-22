@@ -11,6 +11,7 @@ load_dotenv()
 
 # os.environ["OLLAMA_BASE_URL"] = "http://localhost:11434"
 
+
 async def main():
     # Initialize Airze Phoenix Monitoring (Open-source alternative to LangSmith)
     init_monitoring()
@@ -67,7 +68,7 @@ async def main():
     try:
         async for chunk in graph.astream(
             inputs,
-            stream_mode="values",            
+            stream_mode="values",
             context=Context(model=MODEL),
         ):
             message = chunk["messages"][-1]
@@ -78,6 +79,7 @@ async def main():
                 print(f"[{message_type}] (tool call): {message.tool_calls}")
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         print(f"Error during execution: {e}")
 

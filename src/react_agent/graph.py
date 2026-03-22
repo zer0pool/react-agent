@@ -3,6 +3,7 @@
 Works with a chat model with tool calling support.
 """
 
+import json
 import re
 from datetime import UTC, datetime
 from typing import Any, Dict, List, Literal, cast
@@ -14,6 +15,7 @@ from langgraph.runtime import Runtime
 
 from react_agent.context import Context
 from react_agent.prompts import SRE_REVIEWER_PROMPT
+from react_agent.regex_rules import check_regex_patterns
 from react_agent.state import InputState, State
 from react_agent.tools import TOOLS
 from react_agent.utils import load_chat_model
@@ -54,24 +56,28 @@ async def call_model(
     # Heuristic for smaller models that output raw JSON instead of native tool calls
     if not response.tool_calls and isinstance(response.content, str):
         try:
-            import json, uuid
+            import json
+            import uuid
+
             content_str = response.content.strip()
             # Remove Markdown JSON wrapper if it exists
             if content_str.startswith("```json") and content_str.endswith("```"):
                 content_str = content_str[7:-3].strip()
             elif content_str.startswith("```") and content_str.endswith("```"):
                 content_str = content_str[3:-3].strip()
-                
+
             data = json.loads(content_str)
             if isinstance(data, dict) and "name" in data and "arguments" in data:
                 args = data["arguments"]
                 if isinstance(args, str):
                     args = json.loads(args)
-                response.tool_calls = [{
-                    "name": data["name"],
-                    "args": args,
-                    "id": f"call_{uuid.uuid4().hex[:8]}"
-                }]
+                response.tool_calls = [
+                    {
+                        "name": data["name"],
+                        "args": args,
+                        "id": f"call_{uuid.uuid4().hex[:8]}",
+                    }
+                ]
         except Exception:
             pass
 
@@ -90,11 +96,6 @@ async def call_model(
     return {"messages": [response]}
 
 
-import json
-
-from react_agent.regex_rules import check_regex_patterns
-
-
 # Add Regex precheck node
 async def regex_precheck(
     state: State, runtime: Runtime[Context]
@@ -109,9 +110,7 @@ async def regex_precheck(
     return {"messages": []}
 
 
-async def preprocess_log(
-    state: State, runtime: Runtime[Context]
-) -> Dict[str, Any]:
+async def preprocess_log(state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
     """Distills the raw log into a more concise format for the LLM and search tools."""
     raw_log = state.raw_log
 
@@ -137,14 +136,14 @@ async def preprocess_log(
         if raw_log in original_content:
             new_content = original_content.replace(raw_log, final_log)
             # We create a new HumanMessage with the same ID to replace it via add_messages
-            new_messages.append(HumanMessage(content=new_content, id=state.messages[0].id))
+            new_messages.append(
+                HumanMessage(content=new_content, id=state.messages[0].id)
+            )
 
     return {"raw_log": final_log, "messages": new_messages}
 
 
-async def review_analysis(
-    state: State, runtime: Runtime[Context]
-) -> Dict[str, Any]:
+async def review_analysis(state: State, runtime: Runtime[Context]) -> Dict[str, Any]:
     """Reviews the agent's analysis and requests refinement if necessary."""
     # Prevent infinite loops: only review once.
     if state.is_refined:
@@ -166,10 +165,10 @@ async def review_analysis(
         if "```json" in content:
             content = content.split("```json")[-1].split("```")[0]
         elif "```" in content:
-             content = content.split("```")[-1].split("```")[0]
-        
+            content = content.split("```")[-1].split("```")[0]
+
         review_data = json.loads(content.strip())
-        
+
         if not review_data.get("is_approved", True):
             feedback = review_data.get("feedback", "Please refine the analysis.")
             # Inject a refinement request into the conversation
@@ -179,7 +178,7 @@ async def review_analysis(
             return {
                 "messages": [feedback_msg],
                 "is_refined": True,
-                "review_feedback": feedback
+                "review_feedback": feedback,
             }
     except Exception:
         pass
