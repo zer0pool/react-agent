@@ -8,7 +8,7 @@ import re
 from datetime import UTC, datetime
 from typing import Any, Dict, List, Literal, cast
 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 from langgraph.runtime import Runtime
@@ -99,14 +99,24 @@ async def call_model(
 # Add Regex precheck node
 async def regex_precheck(
     state: State, runtime: Runtime[Context]
-) -> Dict[str, List[AIMessage]]:
+) -> Dict[str, List[AnyMessage]]:
     """Checks if the log matches any known fast-path regex rules."""
     report = check_regex_patterns(state.raw_log)
     if report:
-        # Generate an AIMessage containing the JSON directly to bypass the LLM
-        return {"messages": [AIMessage(content=json.dumps(report, indent=2))]}
+        # If high confidence, bypass LLM and end graph
+        if report.get("confidence") == "high":
+            return {"messages": [AIMessage(content=json.dumps(report, indent=2))]}
 
-    # If no match, return no new messages; the graph will route to call_model
+        # If medium/low confidence, inject a guide message for the LLM
+        hint = (
+            f"I obtained this classification through string matching: {json.dumps(report, indent=2)}.\n"
+            "Look at the log content and refer to this information to derive the final result. "
+            "If the error classification is wrong, suggest a new error classification "
+            "and add the grounds for that judgment as an explanation."
+        )
+        return {"messages": [HumanMessage(content=hint)]}
+
+    # If no match, return no new messages; the graph will route to preprocess_log
     return {"messages": []}
 
 
@@ -180,6 +190,15 @@ async def review_analysis(state: State, runtime: Runtime[Context]) -> Dict[str, 
                 "is_refined": True,
                 "review_feedback": feedback,
             }
+        else:
+            # If approved, inject the review result into the final analysis JSON
+            try:
+                final_analysis = json.loads(analysis_content)
+                final_analysis["review_result"] = review_data.get("feedback", "Approved by Lead SRE.")
+                # Update the last message to include the review result
+                return {"messages": [AIMessage(content=json.dumps(final_analysis, indent=2), id=last_message.id)]}
+            except Exception:
+                pass
     except Exception:
         pass
 

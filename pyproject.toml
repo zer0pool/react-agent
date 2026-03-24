@@ -25,6 +25,7 @@ dependencies = [
     "sentence-transformers>=5.3.0",
     "langchain-google-genai>=4.2.1",
     "isort>=8.0.1",
+    "langchain-google-vertexai>=3.2.2",
 ]
 
 

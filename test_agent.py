@@ -50,7 +50,10 @@ async def main():
         [2024-08-08, 14:41:09 EDT] {kubernetes_executor.py:112} ERROR - Error while fetching logs from Kubernetes pod:         
     """
 
-    sample_log = sample_log_2
+    # Medium confidence test log
+    sample_log_4 = "Traceback (most recent call last): Connection lost"
+
+    sample_log = sample_log_4
 
     inputs = {
         "messages": [
