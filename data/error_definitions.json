@@ -3,244 +3,1052 @@
     "error_id": "E001",
     "pattern_name": "Missing Python Module",
     "pattern_type": "regex",
-    "pattern": "(?:ModuleNotFoundError: No module named '[VAR]')|(?:ValueError: Please install the '[VAR]' package)",
+    "pattern": "(?:ModuleNotFoundError: No module named '[VAR]')|(?:ValueError: Please install the '[VAR]' package to use this function)|ERROR: pip's dependency resolver does not currently",
     "category": "DEPENDENCY_ISSUES",
-    "description": "Required python package is missing in the execution environment.",
-    "resolution_step": "Add the missing package to your requirements.txt or rebuild the Docker image.",
+    "sub_category": "PYTHON_MODULE_NOT_FOUND",
+    "severity": "HIGH",
+    "priority": "2",
+    "description": "The Python script failed because a required module or package is not installed in the execution environment, or there are conflicting dependencies.",
+    "root_cause": "A Python dependency is missing from the Airflow task's environment, or there are dependency version conflicts preventing proper import. This can occur when requirements.txt is not updated, or when the base environment image lacks required packages.",
+    "resolution_steps": [
+      "Identify the missing module name from the error message (e.g., 'xgboost', 'statsmodels', 'db-dtypes')",
+      "Check if there's a pip dependency conflict error indicating version incompatibilities",
+      "For self-scheduling jobs: Update requirements.txt with exact version (e.g., package==1.2.3)",
+      "If dependency conflict: Update requirements.txt to resolve conflicts (pip check, pipdeptree)",
+      "Test locally: Create fresh kernel environment, install all dependencies, run script to see everythin is working fine",
+      "Edit the Job Configuration from Scheduling Webserver and submit.",
+      "Request job re-execution through 1:1 inquiry"
+    ],
+    "prevention_tips": [
+      "Pin all dependency versions in requirements.txt (package==1.2.3 format)",
+      "Use pip-tools (pip-compile) to resolve dependency conflicts before deployment",
+      "Test in environment matching production (same Python version, base image)",
+      "Implement dependency validation in CI/CD pipeline (pip check, pip-audit)",
+      "Document all required dependencies in job configuration.",
+      "Use Docker images with pinned base image versions for consistency"
+    ],
     "representative_examples": [
-      "ModuleNotFoundError: No module named 'pandas'",
-      "ValueError: Please install the 'db-dtypes' package to use this function"
-    ]
+      "ModuleNotFoundError: No module named 'xgboost'",
+      "ModuleNotFoundError: No module named 'statsmodels'",
+      "ValueError: Please install the 'db-dtypes' package to use this function",
+      "ERROR: pip's dependency resolver does not currently take into account all the packages that are installed"
+    ],
+    "keywords": [
+      "ModuleNotFoundError",
+      "pip",
+      "requirements.txt",
+      "package",
+      "dependency",
+      "import",
+      "install",
+      "module",
+      "jupyter notebook"
+    ],
+    "confidence": 10,
+    "related_errors": [
+      "E020"
+    ],
+    "source": "unified",
+    "last_updated": "2026-03-16"
+  },
+  {
+    "error_id": "E002",
+    "pattern_name": "Triggering Table Timeout",
+    "pattern_type": "simple_string",
+    "pattern": "The triggering tables has not been updated for more than time limit",
+    "category": "DEPENDENCY_ISSUES",
+    "sub_category": "FIN_TIMEOUT",
+    "severity": "MEDIUM",
+    "priority": "2",
+    "description": "The job failed because a dependent 'triggering table' was not updated within the specified time limit.",
+    "root_cause": "The job is configured to wait for the arrival of new data partitions or updates in the reference table before execution. However, no new partitions or data changes were detected within the specified timeout period. This failure typically indicates not only a potential delay or failure in the upstream job but also a possible absence of source data ingestion into the triggering table.",
+    "resolution_steps": [
+      "Check if data of reference table was updated if you set reference tables when you update job",
+      "Verify the upstream job responsible for updating the triggering table executed successfully",
+      "Check the fin history (update history) of the reference table",
+      "If you want to work regardless of the triggering table update, remove the table from 'trigger_tables' in Metadata.yaml",
+      "Verify the triggering table configuration is correct",
+      "Request job re-execution through 1:1 inquiry after verifying upstream job status"
+    ],
+    "prevention_tips": [
+      "Monitor upstream job execution times to ensure they complete within timeout windows",
+      "Set appropriate timeout values in job configuration based on historical data",
+      "Review and adjust trigger_tables configuration regularly",
+      "Use dependency management to ensure jobs execute in correct order"
+    ],
+    "representative_examples": [
+      "The triggering tables has not been updated for more than time limit."
+    ],
+    "keywords": [
+      "trigger_tables",
+      "fin history",
+      "upstream job",
+      "timeout",
+      "reference table",
+      "Metadata.yaml",
+      "triggering table"
+    ],
+    "confidence": 10,
+    "related_errors": [],
+    "source": "unified",
+    "last_updated": "2026-03-16"
+  },
+  {
+    "error_id": "E003",
+    "pattern_name": "Undefined Python Variable",
+    "pattern_type": "regex",
+    "pattern": "NameError: name '[^']+' is not defined",
+    "category": "LOGIC_ERRORS",
+    "sub_category": "UNDEFINED_VARIABLE",
+    "severity": "HIGH",
+    "priority": "2",
+    "description": "The Python script failed because it tried to use a variable (often a DataFrame) before it was assigned a value.",
+    "root_cause": "A logical error in the script where a variable was used before it was initialized. This can happen if an earlier step that was supposed to create the variable failed, was skipped due to conditional logic, or if there is a typo in the variable name.",
+    "resolution_steps": [
+      "Examine the Python script at the specified line number",
+      "Ensure the variable is always assigned a value before it's used",
+      "Check conditional statements or try-except blocks that might skip variable initialization",
+      "Verify that all upstream data processing steps correctly produce the data intended for the variable",
+      "An empty or unexpected input might prevent it from being initialized",
+      "Add debugging: Temporarily add print statements or logging to trace the value of the variable or related variables",
+      "Check for typos in the variable name",
+      "Re-deploy the updated job and request a re-execution"
+    ],
+    "prevention_tips": [
+      "Initialize variables with default values before conditional logic",
+      "Use assertions to verify variables are assigned before use",
+      "Implement comprehensive input validation",
+      "Add logging at key points to track variable states",
+      "Use static analysis tools (pylint, mypy) to catch potential issues",
+      "Write unit tests that verify variable initialization in all code paths"
+    ],
+    "representative_examples": [
+      "Provided dataframe is not defined inside the code (Can also mean that code exited before reaching the dataframe declaration)\nTraceback (most recent call last):\n  File \"/self-scheduling-job/job.py\", line 554, in <module>\n    final_df.head()\n    ^^^^^^^^\nNameError: name 'final_df' is not defined",
+      "Provided dataframe is not defined inside the code (Can also mean that code exited before reaching the dataframe declaration)\nTraceback (most recent call last):\n  File \"/self-scheduling-job/job.py\", line 602, in <module>\n    anomaly_df.site_cd.unique()\n    ^^^^^^^^^^\nNameError: name 'anomaly_df' is not defined"
+    ],
+    "keywords": [
+      "NameError",
+      "variable",
+      "undefined",
+      "DataFrame",
+      "uninitialized",
+      "is not defined",
+      "scope",
+      "jupyter notebook"
+    ],
+    "confidence": 10,
+    "related_errors": [
+      "E004"
+    ],
+    "source": "unified",
+    "last_updated": "2026-03-16"
+  },
+  {
+    "error_id": "E004",
+    "pattern_name": "DataFrame Column Missing",
+    "pattern_type": "regex",
+    "pattern": "KeyError: '[^']+'\\n(?:.|\\n)*?pandas/core/indexes/base\\.py[\\s\\S]*?KeyError: '[^']+']",
+    "category": "LOGIC_ERRORS",
+    "sub_category": "DATAFRAME_COLUMN_MISSING",
+    "severity": "HIGH",
+    "priority": "2",
+    "description": "The script failed with a KeyError while trying to access a non-existent column in a pandas DataFrame.",
+    "root_cause": "The script expects a column with a specific name that is not present in the DataFrame. This is usually caused by an upstream data schema change, an error in a data preparation step, or a typo in the column name within the code.",
+    "resolution_steps": [
+      "Examine the error message to identify which column is missing",
+      "Review the DataFrame's schema using df.info() and df.columns.tolist()",
+      "Check if the column name has a typo (case sensitivity, extra spaces, underscores)",
+      "Verify upstream data processing steps that should create or rename the column",
+      "Check if there's conditional logic that might prevent the column from being created",
+      "Look for errors in data loading or merging operations that could lead to missing columns",
+      "Test locally with representative input data to reproduce the error",
+      "Correct the column name, ensure it's created, or update the code to use the correct column name",
+      "Re-deploy the job and request a re-execution"
+    ],
+    "prevention_tips": [
+      "Implement schema validation checks before accessing DataFrame columns",
+      "Use df.get(column, default_value) instead of df[column] for safer access",
+      "Add assertions or validation to ensure required columns exist",
+      "Document expected DataFrame schemas in code comments or documentation",
+      "Test with various data scenarios to catch edge cases",
+      "Use column existence checks before accessing: if 'column_name' in df.columns"
+    ],
+    "representative_examples": [
+      "Traceback (most recent call last):\n  File \"/opt/conda/lib/python3.8/site-packages/pandas/core/indexes/base.py\", line 3361, in get_loc\nKeyError: 'HIST'\nThe above exception was the direct cause of the following exception:\nTraceback (most recent call last):\n  File \"job.py\", line 406, in <module>\n  File \"/opt/conda/lib/python3.8/site-packages/pandas/core/frame.py\", line 3458, in __getitem__\n  File \"/opt/conda/lib/python3.8/site-packages/pandas/core/indexes/base.py\", line 3363, in get_loc\n    raise KeyError(key) from err\nKeyError: 'HIST'",
+      "Traceback (most recent call last):\n  File \"/opt/conda/lib/python3.8/site-packages/pandas/core/indexes/base.py\", line 3361, in get_loc\nKeyError: 'Anomaly_date'\nThe above exception was the direct cause of the following exception:\nTraceback (most recent call last):\n  File \"job.py\", line 583, in <module>\n  File \"/opt/conda/lib/python3.8/site-packages/pandas/core/frame.py\", line 3458, in __getitem__\n  File \"/opt/conda/lib/python3.8/site-packages/pandas/core/indexes/base.py\", line 3363, in get_loc\n    raise KeyError(key) from err\nKeyError: 'Anomaly_date'"
+    ],
+    "keywords": [
+      "KeyError",
+      "pandas",
+      "DataFrame",
+      "column",
+      "schema change",
+      "column not found",
+      "pandas.core.indexes",
+      "jupyter notebook"
+    ],
+    "confidence": 9,
+    "related_errors": [
+      "E003",
+      "E007"
+    ],
+    "source": "unified",
+    "last_updated": "2026-03-16"
+  },
+  {
+    "error_id": "E005",
+    "pattern_name": "Invalid Date Value",
+    "pattern_type": "regex",
+    "pattern": "ValueError: month must be in 1\\.\\.12",
+    "category": "LOGIC_ERRORS",
+    "sub_category": "INVALID_DATE_VALUE",
+    "severity": "HIGH",
+    "priority": "2",
+    "description": "The script failed with a ValueError when trying to create a date or time object with invalid parameters (e.g., month 0).",
+    "root_cause": "A logical error in date/time calculation logic. A common case is subtracting from a month or day without correctly handling rollovers (e.g., `month - 1` for January results in 0, which is invalid).",
+    "resolution_steps": [
+      "Review the date calculation logic in the script",
+      "Examine the line where the date object is being created",
+      "Identify the arithmetic operation causing the invalid value (e.g., today.month-1)",
+      "Use a robust method to calculate the new date",
+      "Recommended: Use dateutil.relativedelta for safe date arithmetic: from dateutil.relativedelta import relativedelta; new_date = today - relativedelta(months=1)",
+      "Alternative: Implement custom logic that wraps around years (if month-1 is 0, set month to 12 and decrement year)",
+      "Test edge cases specifically, like January (where month-1 would be 0)",
+      "Correct the date calculation, re-deploy the job, and request a re-execution"
+    ],
+    "prevention_tips": [
+      "Use dateutil.relativedelta for safe date arithmetic instead of manual calculation",
+      "Add validation to ensure date values are within valid ranges before creating date objects",
+      "Test date logic with edge cases (month rollovers, leap years, month ends)",
+      "Consider using pandas date functions which handle edge cases automatically",
+      "Add logging to trace date calculations during development",
+      "Write unit tests for date calculation logic with various edge cases"
+    ],
+    "representative_examples": [
+      "Provided dataframe is not defined inside the code (Can also mean that code exited before reaching the dataframe declaration)\nTraceback (most recent call last):\n  File \"/self-scheduling-job/job.py\", line 201, in <module>\n    start_date = date(today.year, today.month-1, 1)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nValueError: month must be in 1..12",
+      "BadRequest: 400 Invalid timestamp: Cannot parse timestamp '2023-13-01'"
+    ],
+    "keywords": [
+      "ValueError",
+      "date",
+      "month",
+      "datetime",
+      "dateutil",
+      "relativedelta",
+      "rollover",
+      "invalid date",
+      "month must be in"
+    ],
+    "confidence": 10,
+    "related_errors": [
+      "E006"
+    ],
+    "source": "unified",
+    "last_updated": "2026-03-16"
+  },
+  {
+    "error_id": "E006",
+    "pattern_name": "BigQuery SQL Syntax Error",
+    "pattern_type": "simple_string",
+    "pattern": "BadRequest: 400 Syntax error|BadRequest: 400 Query error|BadRequest: 400 Invalid timestamp|BadRequest: 400 Failed to parse input string|BadRequest: 400 Invalid NUMERIC value|BadRequest: 400 Column|BadRequest: 400 Duplicate column names|BadRequest: 400 Unrecognized name|BadRequest: 400 Number of arguments does not match|BadRequest: 400 Could not cast literal|BadRequest: 400 Invalid dataset ID|BadRequest: 400 GET|BadRequest: 400 Name|BadRequest: 400 Queries|BadRequest: 400 Function not found|BadRequest: 400 Correlated subqueries|'reason': 'invalidQuery'",
+    "category": "LOGIC_ERRORS",
+    "sub_category": "SQL_SYNTAX_ERRORS",
+    "severity": "HIGH",
+    "priority": "1",
+    "description": "The BigQuery SQL query contains syntax errors, data type mismatches, invalid references, or other query construction issues preventing execution.",
+    "root_cause": "SQL query is malformed due to typos, missing elements, incorrect keywords, mismatched parentheses, invalid data types, references to non-existent objects, or incorrect function usage. Often caused by rapid development without proper testing or schema changes.",
+    "resolution_steps": [
+      "Locate the specific SQL query causing error in DAG or task logs",
+      "Copy the exact query and error message",
+      "Test in Superset console with sample data to isolate the issue",
+      "Review for common issues:",
+      "  - Typos in table names, column names, or function names",
+      "  - Missing commas in SELECT lists or WHERE clauses",
+      "  - Mismatched parentheses in complex expressions",
+      "  - Incorrect data types in comparisons or functions",
+      "  - References to dropped tables or columns (check schema)",
+      "  - Invalid date/timestamp formats",
+      "  - Unquoted or incorrectly quoted identifiers",
+      "Fix the identified issues in the query",
+      "Test corrected query in Superset console with full data",
+      "Update the SQL query within Airflow DAG or configuration",
+      "Redeploy the job",
+      "Request job re-execution through 1:1 inquiry"
+    ],
+    "prevention_tips": [
+      "Use SQL linters and formatters (SQLFluff, BigQuery IDE plugin)",
+      "Test all queries in Superset console before deployment",
+      "Implement SQL validation in CI/CD pipeline (Dry Run mode)",
+      "Document expected table schemas and data types",
+      "Use parameterized queries to avoid injection issues",
+      "Implement query templates with standard patterns",
+      "Review query execution plans for optimization opportunities",
+      "Use WITH clauses for complex queries to improve readability"
+    ],
+    "representative_examples": [
+      "google.api_core.exceptions.BadRequest: 400 Syntax error: Expected end of input but got identifier \\\"xxxxxx\\\" at [1:9]",
+      "BadRequest: 400 Invalid timestamp: Cannot parse timestamp '2023-13-01'",
+      "BadRequest: 400 Unrecognized name: non_existent_column",
+      "BadRequest: 400 Column not found: project.dataset.table",
+      "BadRequest: 400 Function not found: INVALID_FUNCTION_NAME"
+    ],
+    "keywords": [
+      "BadRequest",
+      "400",
+      "SQL",
+      "syntax error",
+      "BigQuery",
+      "query",
+      "invalidQuery",
+      "Unrecognized name",
+      "function not found",
+      "Syntax error"
+    ],
+    "confidence": 10,
+    "related_errors": [
+      "E005",
+      "E009"
+    ],
+    "source": "unified",
+    "last_updated": "2026-03-16"
+  },
+  {
+    "error_id": "E007",
+    "pattern_name": "Dynamic Column Missing",
+    "pattern_type": "regex",
+    "pattern": "KeyError: 'hour_gmt_[0-9]{1,2}'\\n(?:.|\\n)*?KeyError: 'hour_gmt_[0-9]{1,2}'",
+    "simple_patterns": [],
+    "category": "LOGIC_ERRORS",
+    "sub_category": "DATAFRAME_DYNAMIC_COLUMN_MISSING",
+    "severity": "HIGH",
+    "priority": "2",
+    "description": "The script failed with a KeyError while accessing a dynamically named column (e.g., 'hour_gmt_14') that was expected to exist.",
+    "root_cause": "The script dynamically generates column names based on time or other parameters, but the expected data for that specific partition (e.g., a certain hour) was not generated or loaded, leading to the absence of the corresponding column.",
+    "resolution_steps": [
+      "Identify which dynamically named column is missing from the error",
+      "Check the expected hour or time partition value that should have generated the column",
+      "Verify upstream data sources to confirm that data for the relevant hour exists",
+      "Review the time logic for determining the current hour or constructing the column name",
+      "Check for data loading or filtering steps that might exclude necessary hourly data",
+      "Add column existence check before access: if f'hour_gmt_{hour}' in df.columns",
+      "Implement default handling for missing hourly columns if appropriate",
+      "Test locally with debug logging to trace the DataFrame's state before the KeyError",
+      "Update job to handle missing hourly data or fix data generation logic",
+      "Re-deploy and request re-execution"
+    ],
+    "prevention_tips": [
+      "Add validation to ensure expected hourly columns exist before access",
+      "Implement safe column access using df.get() with default values",
+      "Add logging to track which hourly columns are being generated",
+      "Test with various execution times to cover all hour scenarios",
+      "Consider using pivot tables or melts instead of dynamic columns",
+      "Document expected hourly data patterns in job documentation"
+    ],
+    "representative_examples": [
+      "Traceback (most recent call last):\n  File \"/opt/conda/lib/python3.8/site-packages/pandas/core/indexes/base.py\", line 3361, in get_loc\nKeyError: 'hour_gmt_14'\nThe above exception was the direct cause of the following exception:\nTraceback (most recent call last):\n  File \"job.py\", line 333, in <module>\n  File \"/opt/conda/lib/python3.8/site-packages/pandas/core/frame.py\", line 8740, in apply\n  File \"/opt/conda/lib/python3.8/site-packages/pandas/core/apply.py\", line 688, in apply\n  File \"/opt/conda/lib/python3.8/site-packages/pandas/core/apply.py\", line 812, in apply_standard\n  File \"/opt/conda/lib/python3.8/site-packages/pandas/core/apply.py\", line 798, in apply_map_dataframe\n  File \"/opt/conda/lib/py...\nKeyError: 'hour_gmt_14'",
+      "Traceback (most recent call last):\n  File \"/opt/conda/lib/python3.8/site-packages/pandas/core/indexes/base.py\", line 3361, in get_loc\nKeyError: 'hour_gmt_19'\nThe above exception was the direct cause of the following exception:\nTraceback (most recent call last):\n  File \"job.py\", line 333, in <module>\n  File \"/opt/conda/lib/python3.8/site-packages/pandas/core/frame.py\", line 8740, in apply\n  File \"/opt/conda/lib/python3.8/site-packages/pandas/core/apply.py\", line 688, in apply\n  File \"/opt/conda/lib/python3.8/site-packages/pandas/core/apply.py\", line 812, in apply_standard\n  File \"/opt/conda/lib/python3.8/site-packages/pandas/core/apply.py\", line 798, in apply_map_dataframe\n  File \"/opt/conda/lib/py...\nKeyError: 'hour_gmt_19'"
+    ],
+    "keywords": [
+      "KeyError",
+      "hour_gmt",
+      "dynamic column",
+      "pandas",
+      "time partition",
+      "hourly data",
+      "DataFrame"
+    ],
+    "confidence": 9,
+    "related_errors": [
+      "E004"
+    ],
+    "source": "unified",
+    "last_updated": "2026-03-16"
+  },
+  {
+    "error_id": "E008",
+    "pattern_name": "Query Throughput Exceeded",
+    "pattern_type": "simple_string",
+    "pattern": "InternalServerError: 500 Operation timed out|The data processing capacity of 'Create statement' query has exceeded the limit",
+    "category": "RESOURCE_CONSTRAINTS",
+    "sub_category": "THROUGHPUT_LIMITS",
+    "severity": "HIGH",
+    "priority": "1",
+    "description": "The query failed because the volume of data being processed or written by a 'Create statement' exceeded the system's limit.",
+    "root_cause": "The query is inefficiently written, processing an excessive amount of data at once. This often happens with queries that do full table scans or overwrites instead of incremental updates, or lack sufficient filtering (e.g., 'WHERE' clauses).",
+    "resolution_steps": [
+      "Review the query to identify which table is causing the throughput issue",
+      "Check if the query is doing a full table scan or processing excessive data",
+      "Apply optimization strategies:",
+      "  - Rather than extracting and overwriting data for entire period, append data for required period to existing table",
+      "  - Extract only the required period and columns",
+      "  - Divide the table by purpose/register multiple scheduling jobs instead of containing all columns",
+      "  - Write query logic efficiently: Use 'JOIN' after applying 'WHERE' and 'GROUP BY'",
+      "  - Add date range filters in WHERE clauses to limit data processed",
+      "  - Use partition pruning by filtering on partition columns",
+      "Test optimized query in Superset console to verify it stays within limits",
+      "Update job with optimized query",
+      "Redeploy and request re-execution"
+    ],
+    "prevention_tips": [
+      "Always add WHERE clauses with date ranges to limit data volume",
+      "Use incremental loading strategies instead of full table overwrites",
+      "Partition tables by date for better query performance",
+      "Monitor query execution time and data volume in Superset console",
+      "Use EXPLAIN to analyze query execution plans before deployment",
+      "Test queries with sample data to identify throughput issues early"
+    ],
+    "representative_examples": [
+      "InternalServerError: 500 Operation timed out",
+      "The data processing capacity of 'Create statement' query has exceeded the limit."
+    ],
+    "keywords": [
+      "InternalServerError",
+      "500",
+      "throughput",
+      "CREATE statement",
+      "capacity exceeded",
+      "full table scan",
+      "incremental",
+      "data volume"
+    ],
+    "confidence": 10,
+    "related_errors": [
+      "E010",
+      "E016"
+    ],
+    "source": "unified",
+    "last_updated": "2026-03-16"
+  },
+  {
+    "error_id": "E009",
+    "pattern_name": "Resource Shortage",
+    "pattern_type": "simple_string",
+    "pattern": "BadRequest: 400 Resources exceeded|InternalServerError: 500 Request timed out|AirflowException: Pod|kubernetes.client.exceptions.ApiException|There's a temporary lack of resources",
+    "category": "RESOURCE_CONSTRAINTS",
+    "sub_category": "TRANSIENT_RESOURCE_ISSUES",
+    "severity": "MEDIUM",
+    "priority": "1",
+    "description": "The job failed due to a temporary lack of available computing resources in the execution environment.",
+    "root_cause": "The execution cluster or environment experienced a temporary spike in demand or a transient issue, leaving insufficient CPU, memory, or other resources to schedule or run the task pod.",
+    "resolution_steps": [
+      "Wait a few minutes and retry the job execution (this is typically a transient issue)",
+      "Check the Kubernetes cluster status for resource availability issues",
+      "Verify there are no widespread outages affecting the execution environment",
+      "If the issue persists across multiple retries, check if your job is requesting excessive resources",
+      "Review executor_config or kubernetes_executor_conf settings in your DAG",
+      "Consider adjusting resource requests/limits if they are set too high",
+      "Monitor for node capacity issues or scheduling problems",
+      "Submit 1:1 inquiry to request job re-execution if issue doesn't resolve"
+    ],
+    "prevention_tips": [
+      "Set appropriate resource requests and limits based on actual job requirements",
+      "Implement retry logic with exponential backoff for transient failures",
+      "Schedule resource-intensive jobs during off-peak hours",
+      "Monitor cluster resource utilization and usage patterns",
+      "Use resource quotas to prevent any single job from consuming all resources"
+    ],
+    "representative_examples": [
+      "BadRequest: 400 Resources exceeded",
+      "InternalServerError: 500 Request timed out",
+      "AirflowException: Pod job-12345 returned a failure",
+      "kubernetes.client.exceptions.ApiException",
+      "There's a temporary lack of resources."
+    ],
+    "keywords": [
+      "resources exceeded",
+      "Kubernetes",
+      "pod",
+      "CPU",
+      "memory",
+      "transient",
+      "cluster",
+      "AirflowException",
+      "Request timed out"
+    ],
+    "confidence": 8,
+    "related_errors": [
+      "E015"
+    ],
+    "source": "unified",
+    "last_updated": "2026-03-16"
   },
   {
     "error_id": "E010",
-    "pattern_name": "Permission Denied",
-    "pattern_type": "regex",
-    "pattern": "Forbidden: 403 Access Denied|Permission denied",
-    "category": "PERMISSION",
-    "description": "User does not have sufficient permissions to access the resource (BigQuery, Drive, etc.).",
-    "resolution_step": "Check the IAM roles for the service account and ensure it has access to both BigQuery and the underlying source (e.g., Google Drive).",
+    "pattern_name": "Query Execution Timeout",
+    "pattern_type": "simple_string",
+    "pattern": "Job execution was cancelled: Job timed out after|The query execution time has exceeded the time limit",
+    "category": "RESOURCE_CONSTRAINTS",
+    "sub_category": "TIMEOUT_ERRORS",
+    "severity": "HIGH",
+    "priority": "2",
+    "description": "The SQL query execution time exceeded the configured time limit.",
+    "root_cause": "The query is too complex, processes a very large volume of data without proper optimization, or is stuck due to resource contention, causing it to run longer than the maximum allowed execution time.",
+    "resolution_steps": [
+      "Review the query complexity and data volume being processed",
+      "Apply optimization strategies to reduce execution time:",
+      "  - Append data for required period to existing table rather than full overwrite",
+      "  - Extract only the required period and columns",
+      "  - Divide the table by purpose/register multiple scheduling jobs",
+      "  - Write query logic efficiently: Use 'JOIN' after applying 'WHERE' and 'GROUP BY'",
+      "  - Add date range filters to limit data processed",
+      "  - Use partitioning and clustering for better performance",
+      "Test optimized query in Superset console to verify it completes within time limits",
+      "Consider increasing timeout if optimization is not possible and query is necessary",
+      "Update job with optimized query",
+      "Redeploy and request re-execution"
+    ],
+    "prevention_tips": [
+      "Always test queries with realistic data volumes before deployment",
+      "Use EXPLAIN to analyze query performance and identify bottlenecks",
+      "Partition tables by date for efficient date-range queries",
+      "Monitor query execution times in production and optimize slow queries",
+      "Set appropriate timeout values based on historical performance data",
+      "Use materialized views or pre-aggregated tables for complex queries"
+    ],
     "representative_examples": [
-      "google.api_core.exceptions.Forbidden: 403 Access Denied: BigQuery: Permission denied while getting Drive credentials."
-    ]
+      "Job execution was cancelled: Job timed out after 1800 seconds",
+      "The query execution time has exceeded the time limit"
+    ],
+    "keywords": [
+      "timeout",
+      "query",
+      "Job timed out",
+      "execution time",
+      "cancelled",
+      "query optimization",
+      "BigQuery",
+      "performance"
+    ],
+    "confidence": 10,
+    "related_errors": [
+      "E008"
+    ],
+    "source": "unified",
+    "last_updated": "2026-03-16"
+  },
+  {
+    "error_id": "E011",
+    "pattern_name": "Permission Denied",
+    "pattern_type": "simple_string",
+    "pattern": "Forbidden: 403 Access Denied|PermissionDenied: 403",
+    "category": "PERMISSION_ERRORS",
+    "sub_category": "ACCESS_DENIED",
+    "severity": "HIGH",
+    "priority": "2",
+    "description": "The job failed due to insufficient permissions to access a required resource.",
+    "root_cause": "The service account or user running the Airflow task lacks the necessary IAM roles or permissions to read, write, or execute an operation on a required resource (e.g., a GCS bucket, BigQuery table, or other cloud service).",
+    "resolution_steps": [
+      "Identify which resource (BigQuery table, S3 bucket, etc.) cannot be accessed",
+      "Check the specific permission or IAM role that is missing from the error message",
+      "Verify the service account being used by the Airflow task",
+      "Request the platform team to grant the necessary IAM permissions",
+      "If using self-scheduling jobs, ensure your service account has appropriate roles",
+      "Common roles needed: BigQuery Data Viewer, BigQuery Data Editor, Storage Object Viewer, etc.",
+      "After permissions are granted, request job re-execution through 1:1 inquiry",
+      "Test access permissions manually if possible before re-executing"
+    ],
+    "prevention_tips": [
+      "Document required IAM roles for each job in job documentation",
+      "Use least privilege principle: grant only necessary permissions",
+      "Test service account permissions in development environment before production",
+      "Implement IAM permission validation in CI/CD pipeline",
+      "Use service account impersonation for better security",
+      "Regularly audit IAM roles and permissions to ensure they are appropriate"
+    ],
+    "representative_examples": [
+      "Forbidden: 403 Access Denied",
+      "google.api_core.exceptions.PermissionDenied: 403 User does not have permission to query table [VAR], or table does not exist."
+    ],
+    "keywords": [
+      "Forbidden",
+      "403",
+      "Access Denied",
+      "PermissionDenied",
+      "IAM",
+      "service account",
+      "permission",
+      "role"
+    ],
+    "confidence": 9,
+    "related_errors": [],
+    "source": "unified",
+    "last_updated": "2026-03-16"
   },
   {
     "error_id": "E012",
     "pattern_name": "Schema Mismatch",
     "pattern_type": "simple_string",
-    "pattern": "BadRequest: 400 Provided schema does not match|Invalid schema update",
+    "pattern": "BadRequest: 400 PATCH|BadRequest: 400 No matching signature|BadRequest: 400 POST|BadRequest: 400 Invalid schema update|BadRequest: 400 Invalid value|BadRequest: 400 Provided Schema does not match|Invalid schema update|The schema of the scheduling result table does not match the schema of the existing table",
     "category": "SCHEMA_ISSUES",
-    "description": "The query result schema does not match the destination table schema.",
-    "resolution_step": "Align the column names and types between the query and the target table.",
+    "sub_category": "SCHEMA_MISMATCH",
+    "severity": "HIGH",
+    "priority": "2",
+    "description": "The job failed because the schema of the query result does not match the schema of the destination table.",
+    "root_cause": "When appending or overwriting data, the number of columns, column names, data types, or column order of the new data does not match the existing target table's schema, leading to a write failure.",
+    "resolution_steps": [
+      "Extract the schema comparison error from the logs to identify mismatch details",
+      "Check source table schema: SELECT * FROM project.dataset.INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'source_table'",
+      "Check destination table schema: SELECT * FROM project.dataset.INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'dest_table'",
+      "Compare schemas and identify differences: missing columns, extra columns, data type mismatches, column name differences, column order differences",
+      "Fix the mismatch by one of these methods:",
+      "  - Method A: Modify query to match destination schema (add CAST, rename columns, drop extra columns)",
+      "  - Method B: Alter destination table to accept new schema (if acceptable)",
+      "  - Method C: Use CREATE OR REPLACE TABLE to overwrite entire table with new schema",
+      "Test corrected query in Superset console with sample data",
+      "Update job with corrected query or table alteration",
+      "Redeploy and re-execute"
+    ],
+    "prevention_tips": [
+      "Always validate schemas before production deployment using INFORMATION_SCHEMA",
+      "Implement schema validation in CI/CD pipeline with automated checks",
+      "Use schema evolution strategies: versioned tables, schema registry, or schema-on-read",
+      "Document table schemas in job documentation or data dictionary",
+      "Use schema versioning in table names (e.g., table_v1, table_v2)",
+      "Implement schema diff tools to catch changes before deployment",
+      "Consider using Dataform or dbt for schema management",
+      "Add explicit CAST statements in queries to ensure type consistency"
+    ],
     "representative_examples": [
-      "BadRequest: 400 Provided schema does not match. Field 'amount' has changed type from INT64 to FLOAT64"
-    ]
+      "BadRequest: 400 PATCH - Schema does not match. Destination table has 5 columns, source has 6",
+      "BadRequest: 400 Invalid schema update. Cannot add column 'new_column' to table",
+      "BadRequest: 400 Provided Schema does not match. Field 'amount' has changed type from INT64 to FLOAT64",
+      "pyarrow.lib.ArrowTypeError: Could not convert FLOAT64 column to INT64",
+      "The schema of the scheduling result table does not match the schema of the existing table."
+    ],
+    "keywords": [
+      "schema mismatch",
+      "PATCH",
+      "column type",
+      "INFORMATION_SCHEMA",
+      "BigQuery",
+      "CAST",
+      "schema update",
+      "Invalid schema",
+      "data type"
+    ],
+    "confidence": 10,
+    "related_errors": [
+      "E013",
+      "E014"
+    ],
+    "source": "unified",
+    "last_updated": "2026-03-16"
   },
   {
     "error_id": "E013",
     "pattern_name": "Schema Inference Failure",
     "pattern_type": "regex",
-    "pattern": "augment_schema|pyarrow\\.lib\\.check_status",
+    "pattern": "File \"[VAR]/site-packages/google/cloud/bigquery/_pandas_helpers.py\", line [VAR], in augment_schema[\\s\\S]*File \"pyarrow/error\\.pxi\", line [VAR], in pyarrow\\.lib\\.check_status",
+    "simple_patterns": [],
     "category": "SCHEMA_ISSUES",
-    "description": "Failed to automatically infer BigQuery schema from DataFrame.",
-    "resolution_step": "Explicitly define the schema instead of relying on automatic inference.",
+    "sub_category": "PYARROW_SCHEMA_INFERENCE",
+    "severity": "HIGH",
+    "priority": "2",
+    "description": "The job failed while automatically inferring a BigQuery schema from a pandas DataFrame.",
+    "root_cause": "The BigQuery client library, using PyArrow, could not determine the correct BigQuery data types for one or more columns in the DataFrame. This is often due to ambiguous types (e.g., 'object' columns with mixed data), nested structures, or unsupported pandas data types.",
+    "resolution_steps": [
+      "Review DataFrame schema using df.info() and df.head() to identify problematic columns",
+      "Look for columns with ambiguous types (e.g., 'object' columns containing mixed data)",
+      "Check for nested structures (lists, dicts) in the DataFrame",
+      "Handle mixed types: Ensure each column has a consistent data type",
+      "Convert DataFrame columns to appropriate types before upload using df.astype() or pd.to_datetime()",
+      "Handle nested data: Flatten lists/dicts to separate columns or use STRUCT/ARRAY types in BigQuery schema",
+      "Instead of relying on automatic schema inference, provide explicit schema using SchemaField objects",
+      "Test data conversion with sample data reflecting full range of expected types",
+      "Update job with pre-processed data and explicit schema",
+      "Re-deploy and re-execute"
+    ],
+    "prevention_tips": [
+      "Always perform data type validation on DataFrames before BigQuery uploads",
+      "For critical tables, define fixed BigQuery schemas and use them instead of inference",
+      "Consistently convert data types before upload (e.g., all numeric to float64, dates to datetime64)",
+      "Test with sample data covering all edge cases of type variations",
+      "Use df.convert_dtypes() for consistent type conversion",
+      "Document expected data types in job documentation"
+    ],
     "representative_examples": [
-      "pyarrow.lib.ArrowTypeError: Could not convert FLOAT64 to INT64"
-    ]
+      "Traceback (most recent call last):\n  File \"/self-scheduling-job/job.py\", line 493, in <module>\n  File \"/self-scheduling-job/samsung/bdp_bigquery_client.py\", line 617, in upload_df_to_mart\n  File \"/self-scheduling-job/samsung/bdp_bigquery_client.py\", line 495, in load_table_from_dataframe\n  File \"/opt/conda/lib/python3.11/site-packages/google/cloud/bigquery/client.py\", line 2647, in load_table_from_dataframe\n  File \"/opt/conda/lib/python3.11/site-packages/google/cloud/bigquery/_pandas_helpers.py\", line 504, in dataframe_to_bq_schema\n  File \"/opt/conda/lib/python3.11/site-packages/google/cloud/bigquery/_pandas_helpers.py\", line 534, in augment_schema\n  File \"pyarrow/array.pxi\", line 323, in pyarrow.lib.array\n  File \"pyarrow/array.pxi\", line 83, in pyarrow.lib._ndarray_to_array\n  File \"pyarrow/error.pxi\", line 100, in pyarrow.lib.check_status"
+    ],
+    "keywords": [
+      "pyarrow",
+      "schema inference",
+      "augment_schema",
+      "pandas",
+      "BigQuery",
+      "DataFrame",
+      "type conversion",
+      "_pandas_helpers"
+    ],
+    "confidence": 9,
+    "related_errors": [
+      "E012"
+    ],
+    "source": "unified",
+    "last_updated": "2026-03-16"
   },
   {
     "error_id": "E014",
     "pattern_name": "Delivery Timeout",
     "pattern_type": "simple_string",
-    "pattern": "AirflowSensorTimeout|DELIVERY_TIMEOUT: Execution time has exceeded",
+    "pattern": "AirflowSensorTimeout|DELIVERY_TIMEOUT: Execution time has exceeded the time limit",
     "category": "DELIVERY_ERRORS",
-    "description": "Data delivery operation exceeded the time limit.",
-    "resolution_step": "Check network latency or increase the timeout setting in the operator.",
+    "sub_category": "DELIVERY_TIMEOUT",
+    "severity": "HIGH",
+    "priority": "2",
+    "description": "The task's data delivery operation exceeded its execution time limit.",
+    "root_cause": "The process of writing or delivering the final dataset to its destination (e.g., an external storage system) took longer than the configured timeout. This can be caused by network latency, a very large result set, or a slow destination system.",
+    "resolution_steps": [
+      "Check the destination type of your job (external storage, BigQuery, etc.)",
+      "Verify that query result is being updated to external storage if destination is external storage",
+      "Check the size of the result set being delivered (may be too large)",
+      "Review network connectivity to the destination system",
+      "Check if the destination system is experiencing slowness or issues",
+      "Consider optimizing the query to reduce result set size",
+      "Increase timeout value if appropriate for the job's requirements",
+      "For external storage, check if the storage service has rate limits or throttling",
+      "Request job re-execution through 1:1 inquiry after addressing the issue"
+    ],
+    "prevention_tips": [
+      "Monitor data delivery times in production and set appropriate timeouts",
+      "Optimize queries to reduce result set size before delivery",
+      "Use incremental delivery strategies for large datasets",
+      "Implement retry logic with exponential backoff for delivery operations",
+      "Monitor destination system performance and capacity",
+      "Use streaming delivery for very large datasets instead of batch"
+    ],
     "representative_examples": [
-      "AirflowSensorTimeout: Timeout reached",
-      "DELIVERY_TIMEOUT: Execution time has exceeded the time limit"
-    ]
+      "AirflowSensorTimeout",
+      "Execution time has exceeded the time limit."
+    ],
+    "keywords": [
+      "AirflowSensorTimeout",
+      "delivery",
+      "timeout",
+      "external storage",
+      "network",
+      "result set",
+      "DELIVERY_TIMEOUT"
+    ],
+    "confidence": 10,
+    "related_errors": [
+      "E016"
+    ],
+    "source": "unified",
+    "last_updated": "2026-03-16"
+  },
+  {
+    "error_id": "E015",
+    "pattern_name": "Kubernetes Pod Failure",
+    "pattern_type": "regex",
+    "pattern": "airflow\\.exceptions\\.AirflowException: Pod [VAR] returned a failure:",
+    "category": "INFRASTRUCTURE_ERRORS",
+    "sub_category": "KUBERNETES_POD_FAILURE",
+    "severity": "HIGH",
+    "priority": "1",
+    "description": "The Airflow task failed because its underlying Kubernetes pod terminated with an error before completion.",
+    "root_cause": "An infrastructure-level problem with the Kubernetes pod responsible for task execution. Causes include insufficient memory (OOMKilled), node failures, persistent volume claim issues, container image pull errors, or pod configuration errors.",
+    "resolution_steps": [
+      "Check the full Kubernetes Pod logs (not just Airflow task logs) for specific error messages",
+      "Look for container exit codes, OOMKilled events, or initialization failures",
+      "Review executor_config or kubernetes_executor_conf settings in your DAG",
+      "Check resource requests and limits: ensure pod's requested CPU and memory are sufficient",
+      "Verify volume mounts (especially EXTRA_FILES) are correctly configured and accessible",
+      "Confirm the container image can be pulled successfully from the registry",
+      "Investigate Kubernetes cluster health: node capacity, networking issues, cloud provider status",
+      "If the problem is intermittent, try re-running the task",
+      "If issue persists, escalate to platform team or Kubernetes administrators",
+      "Request job re-execution through 1:1 inquiry after infrastructure issues are resolved"
+    ],
+    "prevention_tips": [
+      "Set appropriate resource requests and limits based on historical usage",
+      "Implement robust resource monitoring and alerting",
+      "Regularly monitor Kubernetes cluster health and resource utilization",
+      "Ensure external storage and dependencies are highly available and properly configured",
+      "Test job configuration in development environment before production deployment",
+      "Use health checks and readiness probes in container configuration"
+    ],
+    "representative_examples": [
+      "airflow.exceptions.AirflowException: Pod anomaly-phase2-anomaly-email-alert-v11-1706841012-90665-qhac2kq7 returned a failure:\n...",
+      "airflow.exceptions.AirflowException: Pod anomaly-phase2-anomaly-email-alert-v11-1706846715-959555-207936w0 returned a failure:\n..."
+    ],
+    "keywords": [
+      "Kubernetes",
+      "pod",
+      "OOMKilled",
+      "container",
+      "executor_config",
+      "AirflowException",
+      "pod failure",
+      "infrastructure"
+    ],
+    "confidence": 10,
+    "related_errors": [
+      "E009"
+    ],
+    "source": "unified",
+    "last_updated": "2026-03-16"
+  },
+  {
+    "error_id": "E016",
+    "pattern_name": "BigQuery API Retry Exhausted",
+    "pattern_type": "regex",
+    "pattern": "google\\.api_core\\.retry\\.retry_unary\\.py[\\s\\S]*_retry_error_helper",
+    "simple_patterns": [],
+    "category": "DELIVERY_ERRORS",
+    "sub_category": "API_RETRY_EXHAUSTED",
+    "severity": "MEDIUM",
+    "priority": "1",
+    "description": "The job failed after multiple unsuccessful attempts to call the BigQuery API.",
+    "root_cause": "The BigQuery client library's internal retry mechanism failed to complete an API call after several attempts. This typically points to transient issues like network instability, temporary BigQuery service unavailability, or hitting API rate limits.",
+    "resolution_steps": [
+      "Check BigQuery service status via Google Cloud Status Dashboard",
+      "Verify network connectivity from Airflow environment to Google Cloud endpoints",
+      "Review BigQuery quotas to check if hitting API rate limits (tables.get calls, etc.)",
+      "If hitting quotas, consider requesting a quota increase or optimizing operations to reduce API calls",
+      "For transient issues, wait a short period and re-run the job",
+      "Check if there are concurrent jobs overwhelming the API",
+      "Review the job's BigQuery usage patterns for optimization opportunities",
+      "Implement error handling to distinguish between quota errors and other failures",
+      "Request job re-execution through 1:1 inquiry after verifying service health"
+    ],
+    "prevention_tips": [
+      "Implement robust logging for BigQuery API interactions including response codes",
+      "Design jobs to be idempotent for safe re-execution",
+      "Optimize BigQuery operations to minimize API calls and avoid hitting quotas",
+      "Use BigQuery query caching to reduce redundant queries",
+      "Monitor API usage to detect quota exhaustion early",
+      "Implement circuit breaker pattern to handle service outages gracefully"
+    ],
+    "representative_examples": [
+      "Traceback (most recent call last):\n  File \"/self-scheduling-job/job.py\", line 833, in <module>\n  File \"/self-scheduling-job/job.py\", line 253, in download_raw_data\n  File \"/self-scheduling-job/samsung/bdp_bigquery_client.py\", line 707, in get_table\n  File \"/opt/conda/lib/python3.11/site-packages/google/cloud/bigquery/client.py\", line 1049, in get_table\n  File \"/opt/conda/lib/python3.11/site-packages/google/cloud/bigquery/client.py\", line 797, in _call_api\n  File \"/opt/conda/lib/python3.11/site-packages/google/api_core/retry/retry_unary.py\", line 293, in retry_wrapped_func\n  File \"/opt/conda/lib/python3.11/site-packages/google/api_core/retry/retry_unary.py\", line 153, in retry_target\n    _retry_error_helper(\n  File \"/opt/conda/lib/python3.11/site-packages/google/api_core/retry/retry_base.py\", line 212, in _retry_error_helper\n  File \"/opt/conda/lib/python3.11/site-packages/google/api_core/retry/retry_unary.py\", line 144, in retry_target\n  File \"/opt/conda/lib/python3.11/site-packages/goo..."
+    ],
+    "keywords": [
+      "retry",
+      "BigQuery API",
+      "google.api_core",
+      "rate limit",
+      "quota",
+      "network",
+      "_retry_error_helper",
+      "retry exhausted"
+    ],
+    "confidence": 9,
+    "related_errors": [
+      "E014"
+    ],
+    "source": "unified",
+    "last_updated": "2026-03-16"
+  },
+  {
+    "error_id": "E017",
+    "pattern_name": "Unexpected Delivery Error",
+    "pattern_type": "simple_string",
+    "pattern": "ValidationError|exception.BaseException|Bad response from application: 500|Bad response from delivery service|Failed to transfer some files",
+    "category": "DELIVERY_ERRORS",
+    "sub_category": "UNEXPECTED_DELIVERY_ERRORS",
+    "severity": "HIGH",
+    "priority": "2",
+    "description": "The job failed due to an unexpected error during data delivery to an external system.",
+    "root_cause": "An unknown or unhandled exception occurred during the data delivery operation. This is a catch-all for delivery errors that don't fit into more specific categories and often require deeper investigation of the full logs.",
+    "resolution_steps": [
+      "Review the full error logs and traceback for specific error details",
+      "Identify the external system where delivery failed (check destination type in job configuration)",
+      "Check if the external system is experiencing service issues or outages",
+      "Verify network connectivity to the external system",
+      "Check if the data format being delivered is compatible with the external system requirements",
+      "Review authentication credentials or API keys for the external system",
+      "Check if the external system has sufficient storage capacity",
+      "If the issue is unclear, collect all relevant error information and logs",
+      "Submit 1:1 inquiry with detailed error information for investigation",
+      "Request job re-execution after the issue is identified and resolved"
+    ],
+    "prevention_tips": [
+      "Test delivery to external systems in development environment before production",
+      "Implement comprehensive error handling and logging for delivery operations",
+      "Monitor external system status and availability",
+      "Use data format validation before attempting delivery",
+      "Implement retry logic for transient delivery failures",
+      "Document external system integration points and requirements"
+    ],
+    "representative_examples": [
+      "ValidationError",
+      "exception.BaseException",
+      "Bad response from application: 500",
+      "Bad response from delivery service",
+      "Failed to transfer some files"
+    ],
+    "keywords": [
+      "ValidationError",
+      "BaseException",
+      "500",
+      "delivery",
+      "file transfer",
+      "external system",
+      "Bad response"
+    ],
+    "confidence": 4,
+    "related_errors": [],
+    "source": "unified",
+    "last_updated": "2026-03-16"
   },
   {
     "error_id": "E018",
     "pattern_name": "File or Table Not Found",
     "pattern_type": "simple_string",
-    "pattern": "NotFound: 404 Not found: Table|FileNotFoundError: \\[Errno 2\\] No such file or directory",
+    "pattern": "NotFound: 404 Not found: Table|NotFound: 404 Not found: Dataset|NotFound: 404 GET|FileNotFoundError: \\[Errno 2\\] No such file or directory: '[VAR]'|Table or view not found: `[VAR]`|Table not found: `[VAR]`|relation \"[VAR]\" does not exist",
     "category": "LOGIC_ERRORS",
-    "description": "The specified source file or destination table does not exist.",
-    "resolution_step": "Verify the path or table name and ensure it was created in previous steps.",
+    "sub_category": "DATA_ACCESS_ERRORS",
+    "severity": "HIGH",
+    "priority": "1",
+    "description": "The job failed because it tried to access a file, table, or other resource that does not exist at the specified path.",
+    "root_cause": "The referenced resource (file, directory, table, dataset) is either misspelled, located in a different database/schema or path, or has been deleted. This is a common logic error in data pipelines and file operations.",
+    "resolution_steps": [
+      "Identify which resource is not found from the error message (file path, table name, dataset name)",
+      "For files: Double-check the file path against the expected location in the execution environment",
+      "For tables/datasets: Verify the resource exists in the correct project and dataset",
+      "Check for typos in the resource name or path",
+      "For files: Confirm the file was correctly staged or mounted in the execution environment",
+      "For files: Check file permissions and ensure the Airflow task can read the file",
+      "Be aware of the current working directory of the Airflow task (use absolute paths if needed)",
+      "For tables: Use Superset console to verify the table/dataset exists and is accessible",
+      "Check if the resource was recently deleted or renamed",
+      "Correct the path or name, or ensure the resource exists, then redeploy and re-execute"
+    ],
+    "prevention_tips": [
+      "Use absolute paths instead of relative paths for file operations",
+      "Implement existence checks before accessing files: if os.path.exists(path)",
+      "Test file paths in development environment that matches production structure",
+      "Document required files, tables, and datasets in job documentation",
+      "Use environment variables for configurable paths and resource names",
+      "Implement validation to check resource existence before job execution",
+      "For BigQuery, use INFORMATION_SCHEMA to verify tables exist before querying"
+    ],
     "representative_examples": [
-      "NotFound: 404 Not found: Table project.dataset.table",
-      "FileNotFoundError: [Errno 2] No such file or directory: '/tmp/data.csv'"
-    ]
+      "FileNotFoundError: [Errno 2] No such file or directory: 'df_val_samples_test2_scores_raw.csv'",
+      "FileNotFoundError: [Errno 2] No such file or directory: '/home/jovyan/facebook_m2m100_418M'",
+      "Table not found: `my_project.my_dataset.deleted_table`",
+      "NotFound: 404 Not found: Dataset my-project:my-dataset",
+      "relation \"non_existent_table\" does not exist"
+    ],
+    "keywords": [
+      "NotFound",
+      "404",
+      "FileNotFoundError",
+      "table not found",
+      "dataset",
+      "file path",
+      "BigQuery",
+      "No such file"
+    ],
+    "confidence": 9,
+    "related_errors": [
+      "E011"
+    ],
+    "source": "unified",
+    "last_updated": "2026-03-16"
+  },
+  {
+    "error_id": "E019",
+    "pattern_name": "Jupyter/Interactive Code in Production",
+    "pattern_type": "regex",
+    "pattern": "Provided dataframe is not defined inside the code [\\s\\S]*?NameError: name '(?:cd|get_ipython)' is not defined",
+    "category": "LOGIC_ERRORS",
+    "sub_category": "JUPYTER_SPECIFIC_CODE",
+    "severity": "MEDIUM",
+    "priority": "3",
+    "description": "The script failed with a NameError because it contained code specific to an interactive Jupyter/IPython environment, such as `get_ipython()` or shell commands like `cd`.",
+    "root_cause": "Code developed in a Jupyter Notebook was moved to a production Python script without removing or converting notebook-specific 'magic' commands or functions, which are not defined in a standard Python interpreter.",
+    "resolution_steps": [
+      "Identify the Jupyter-specific code from the error message (cd, get_ipython, etc.)",
+      "If the command is for installing dependencies (e.g., get_ipython().system('pip install')):",
+      "  - Remove the installation from the script",
+      "  - Manage dependencies through requirements.txt instead",
+      "  - Do not try to install packages at runtime within the job",
+      "If it's a shell command (like cd):",
+      "  - Replace with Python equivalent (e.g., os.chdir('/path/to/directory') instead of cd /path)",
+      "  - Or use subprocess module: subprocess.run(['ls', '-l']) or subprocess.run('ls -l', shell=True)",
+      "  - Be cautious with shell=True due to security implications",
+      "If the code is purely for interactive debugging or environment setup, remove it entirely",
+      "Ensure development and testing is done in environment matching production execution",
+      "Re-deploy the job and request a re-execution"
+    ],
+    "prevention_tips": [
+      "Never move Jupyter notebook code directly to production without review",
+      "Remove all magic commands (%run, %timeit, etc.) before deployment",
+      "Replace shell commands with Python equivalents (os, subprocess, pathlib)",
+      "Remove get_ipython() calls and IPython-specific code",
+      "Test scripts in standard Python environment before production deployment",
+      "Use linters or static analysis tools to identify Jupyter-specific patterns"
+    ],
+    "representative_examples": [
+      "Provided dataframe is not defined inside the code (Can also mean that code exited before reaching the dataframe declaration)\nTraceback (most recent call last):\n  File \"job.py\", line 192, in <module>\n    cd /home/jovyan/spam_analysis\nNameError: name 'cd' is not defined",
+      "Provided dataframe is not defined inside the code (Can also mean that code exited before reaching the dataframe declaration)\nTraceback (most recent call last):\n  File \"/self-scheduling-job/job.py\", line 192, in <module>\n    get_ipython().system('pip install openpyxl')\n    ^^^^^^^^^^^\nNameError: name 'get_ipython' is not defined"
+    ],
+    "keywords": [
+      "NameError",
+      "get_ipython",
+      "Jupyter",
+      "notebook",
+      "magic command",
+      "cd",
+      "IPython",
+      "interactive code",
+      "production"
+    ],
+    "confidence": 10,
+    "related_errors": [],
+    "source": "unified",
+    "last_updated": "2026-03-16"
   },
   {
     "error_id": "E020",
-    "pattern_name": "Out of Memory (OOM)",
-    "pattern_type": "regex",
-    "pattern": "MemoryError|exit code 137|OOMKilled",
-    "category": "RESOURCE_LIMITS",
-    "description": "The process was terminated because it exceeded the available memory.",
-    "resolution_step": "Increase the memory limit of the container or optimize the code to handle data in smaller chunks.",
-    "representative_examples": [
-      "MemoryError: Unable to allocate 2.4 GiB for an array with shape",
-      "Container terminated with exit code 137 (OOMKilled)"
-    ]
-  },
-  {
-    "error_id": "E021",
-    "pattern_name": "API Quota Exceeded",
-    "pattern_type": "simple_string",
-    "pattern": "Quota exceeded: Your project exceeded quota|429 Too Many Requests",
-    "category": "QUOTA_ISSUES",
-    "description": "API call frequency or data volume exceeded the cloud provider's quota.",
-    "resolution_step": "Implement exponential backoff or request a quota increase from the cloud provider console.",
-    "representative_examples": [
-      "google.api_core.exceptions.Forbidden: 403 Quota exceeded: Your project exceeded quota for free query bytes per day"
-    ]
-  },
-  {
-    "error_id": "E022",
-    "pattern_name": "Database Connection Refused",
-    "pattern_type": "regex",
-    "pattern": "Connection refused|Failed to establish a new connection|OperationalError: \\(psycopg2\\)",
-    "category": "NETWORK_ISSUES",
-    "description": "Could not connect to the database server. Server might be down or blocked by firewall.",
-    "resolution_step": "Check if the DB server is running and verify firewall/security group rules for the worker IP.",
-    "representative_examples": [
-      "psycopg2.OperationalError: could not connect to server: Connection refused"
-    ]
-  },
-  {
-    "error_id": "E023",
-    "pattern_name": "No Space Left on Device",
-    "pattern_type": "simple_string",
-    "pattern": "No space left on device|[Errno 28]",
-    "category": "RESOURCE_LIMITS",
-    "description": "The local disk or temporary directory is full.",
-    "resolution_step": "Clean up the /tmp directory or increase the disk size of the worker/PVC.",
-    "representative_examples": [
-      "OSError: [Errno 28] No space left on device: '/var/lib/airflow/tmp'"
-    ]
-  },
-  {
-    "error_id": "E024",
-    "pattern_name": "SQL Syntax Error",
-    "pattern_type": "regex",
-    "pattern": "Syntax error|unexpected token|Invalid query",
-    "category": "LOGIC_ERRORS",
-    "description": "The generated SQL query contains syntax errors.",
-    "resolution_step": "Check the SQL string for missing commas, incorrect keywords, or unclosed quotes.",
-    "representative_examples": [
-      "google.api_core.exceptions.BadRequest: 400 Syntax error: Unexpected keyword SELECT at [5:1]"
-    ]
-  },
-  {
-    "error_id": "E025",
-    "pattern_name": "SSL Certificate Verify Failed",
-    "pattern_type": "simple_string",
-    "pattern": "SSL: CERTIFICATE_VERIFY_FAILED|handshake failure",
-    "category": "NETWORK_ISSUES",
-    "description": "SSL handshake failed while connecting to an external API/DB.",
-    "resolution_step": "Update the CA certificates in the environment or check if the target's certificate is expired.",
-    "representative_examples": [
-      "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self signed certificate"
-    ]
-  },
-  {
-    "error_id": "E026",
-    "pattern_name": "Spark Executor Lost",
-    "pattern_type": "regex",
-    "pattern": "ExecutorLostFailure|FetchFailedException|The executor with id [VAR] was lost",
-    "category": "SPARK_ERRORS",
-    "description": "A Spark executor was terminated, often due to OOM or spot instance preemption.",
-    "resolution_step": "Check executor memory settings or increase the number of retries for Spark tasks.",
-    "representative_examples": [
-      "org.apache.spark.SparkException: Job aborted due to stage failure: ExecutorLostFailure (executor 5 exited caused by external signal)"
-    ]
-  },
-  {
-    "error_id": "E027",
-    "pattern_name": "Null Constraint Violation",
-    "pattern_type": "simple_string",
-    "pattern": "Cannot insert the value NULL|Column [VAR] cannot be null",
-    "category": "DATA_QUALITY",
-    "description": "Attempted to insert NULL into a column that has a NOT NULL constraint.",
-    "resolution_step": "Inspect the source data for unexpected NULL values or update the target table schema.",
-    "representative_examples": [
-      "sqlalchemy.exc.IntegrityError: (psycopg2.errors.NotNullViolation) column 'user_id' contains null values"
-    ]
-  },
-  {
-    "error_id": "E028",
-    "pattern_name": "Authentication Token Expired",
-    "pattern_type": "regex",
-    "pattern": "Token expired|credentials have expired|Unauthorized: 401",
-    "category": "PERMISSION",
-    "description": "The authentication token or credentials used for the service have expired.",
-    "resolution_step": "Refresh the service account token or update the connection credentials in Airflow.",
-    "representative_examples": [
-      "google.auth.exceptions.RefreshError: The credentials have expired and could not be refreshed"
-    ]
-  },
-  {
-    "error_id": "E029",
-    "pattern_name": "Kubernetes Pod Preempted",
-    "pattern_type": "simple_string",
-    "pattern": "Pod was deleted|Preempted by Scheduler",
-    "category": "INFRASTRUCTURE",
-    "description": "The Kubernetes pod running the task was preempted by a higher priority pod or node maintenance.",
-    "resolution_step": "The task should be retried automatically. If it happens frequently, check pod priority settings.",
-    "representative_examples": [
-      "AirflowException: Kubernetes pod was deleted before it could complete"
-    ]
-  },
-  {
-    "error_id": "E030",
-    "pattern_name": "Deadlock Detected",
-    "pattern_type": "simple_string",
-    "pattern": "Deadlock found when trying to get lock|Transaction rollback",
-    "category": "DATABASE",
-    "description": "A database transaction was rolled back because it was deadlocked with another process.",
-    "resolution_step": "Reduce parallelism for this task or check for long-running transactions locking the same tables.",
-    "representative_examples": [
-      "MySQLdb.OperationalError: (1213, 'Deadlock found when trying to get lock; try restarting transaction')"
-    ]
-  },
-  {
-    "error_id": "E031",
     "pattern_name": "Missing Environment Variable",
     "pattern_type": "regex",
-    "pattern": "KeyError: '[VAR]'|environment variable not set",
-    "category": "CONFIGURATION",
-    "description": "A required environment variable for the DAG/Task is missing.",
-    "resolution_step": "Define the missing environment variable in the Airflow deployment or Dockerfile.",
+    "pattern": "KeyError: '[A-Z_0-9]+'\\n[\\s\\S]*?os\\.environ\\[\"[A-Z_0-9]+\"\\]",
+    "simple_patterns": [],
+    "category": "COMMON",
+    "sub_category": "MISSING_ENV_VAR",
+    "severity": "HIGH",
+    "priority": "2",
+    "description": "The script failed with a KeyError when trying to access an environment variable that was not set.",
+    "root_cause": "The code relies on an environment variable (e.g., `os.environ['MY_VAR']`) that is expected to be present in the execution context but was not defined in the Airflow task's environment configuration.",
+    "resolution_steps": [
+      "Identify the missing environment variable name from the error message (e.g., JUPYTERHUB_USER)",
+      "Check if the variable is specific to Airflow environment or another platform (e.g., JupyterHub)",
+      "If it's Airflow-specific: Ensure it's properly configured in the DAG definition",
+      "  - Use the env parameter in BashOperator or PythonOperator",
+      "  - Or configure via Airflow Variables",
+      "If the variable is only relevant in JupyterHub and not needed in Airflow, remove the code that tries to access it",
+      "For robustness, consider using os.getenv('VARIABLE_NAME', 'default_value') to provide a fallback",
+      "  - Or use os.getenv('VARIABLE_NAME') followed by an explicit check for None",
+      "Update the Airflow DAG/configuration or the script",
+      "Re-deploy the job and request a re-execution"
+    ],
+    "prevention_tips": [
+      "Document all required environment variables in job documentation",
+      "Use os.getenv() with defaults for optional environment variables",
+      "Add validation at job startup to check required environment variables",
+      "Use Airflow Variables for configuration that needs to persist across runs",
+      "Test in environment matching production (with same environment variables)",
+      "Consider using configuration files instead of relying on environment variables"
+    ],
     "representative_examples": [
-      "KeyError: 'DB_PASSWORD' during os.environ retrieval"
-    ]
-  },
-  {
-    "error_id": "E032",
-    "pattern_name": "Malformed CSV/Parquet File",
-    "pattern_type": "simple_string",
-    "pattern": "Malformed records|not a valid Parquet file|Error parsing line",
-    "category": "DATA_QUALITY",
-    "description": "The source data file is corrupted or does not follow the expected format.",
-    "resolution_step": "Verify the source file integrity and check for unexpected delimiters or header changes.",
-    "representative_examples": [
-      "pandas.errors.ParserError: Error tokenizing data. C error: Expected 5 fields in line 10, saw 7"
-    ]
-  },
-  {
-    "error_id": "E033",
-    "pattern_name": "GCS Blob Conflict",
-    "pattern_type": "simple_string",
-    "pattern": "412 Precondition Failed|Generation match failed",
-    "category": "STORAGE_ISSUES",
-    "description": "Conflict during file upload/download in Google Cloud Storage due to version mismatch.",
-    "resolution_step": "Check if multiple processes are trying to write to the same GCS object simultaneously.",
-    "representative_examples": [
-      "google.api_core.exceptions.PreconditionFailed: 412 Precondition Failed (Generation match failed)"
-    ]
+      "Provided dataframe is not defined inside the code (Can also mean that code exited before reaching the dataframe declaration)\nTraceback (most recent call last):\n  File \"/self-scheduling-job/job.py\", line 221, in <module>\n    jupyter_user = os.environ[\"JUPYTERHUB_USER\"].replace(\".\", \"_\")\n                   ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^\nKeyError: 'JUPYTERHUB_USER'"
+    ],
+    "keywords": [
+      "KeyError",
+      "os.environ",
+      "environment variable",
+      "JUPYTERHUB_USER",
+      "Airflow Variables",
+      "configuration",
+      "getenv"
+    ],
+    "confidence": 9,
+    "related_errors": [
+      "E001"
+    ],
+    "source": "unified",
+    "last_updated": "2026-03-16"
   }
 ]

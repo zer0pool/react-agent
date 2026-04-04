@@ -9,6 +9,10 @@ from react_agent.monitoring import init_monitoring
 
 load_dotenv()
 
+# langchain-google-genai reads GOOGLE_API_KEY
+if not os.environ.get("GOOGLE_API_KEY") and os.environ.get("GEMINI_API_KEY"):
+    os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
+
 # os.environ["OLLAMA_BASE_URL"] = "http://localhost:11434"
 
 
@@ -65,8 +69,8 @@ async def main():
         "raw_log": sample_log,
     }
 
-    # MODEL = "google_genai/gemini-3-flash-preview"
     MODEL = "ollama/qwen2.5-coder:7b"
+    # MODEL = "google_genai/gemini-2.5-flash"
     print(f"Sending Airflow Log to agent with {MODEL}...")
     try:
         async for chunk in graph.astream(

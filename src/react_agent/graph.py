@@ -4,9 +4,13 @@ Works with a chat model with tool calling support.
 """
 
 import json
+import logging
 import re
+import uuid
 from datetime import UTC, datetime
 from typing import Any, Dict, List, Literal, cast
+
+logger = logging.getLogger(__name__)
 
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from langgraph.graph import StateGraph
@@ -18,7 +22,7 @@ from react_agent.prompts import SRE_REVIEWER_PROMPT
 from react_agent.regex_rules import check_regex_patterns
 from react_agent.state import InputState, State
 from react_agent.tools import TOOLS
-from react_agent.utils import load_chat_model
+from react_agent.utils import extract_json_from_markdown, load_chat_model
 
 # Define the function that calls the model
 
@@ -56,9 +60,6 @@ async def call_model(
     # Heuristic for smaller models that output raw JSON instead of native tool calls
     if not response.tool_calls and isinstance(response.content, str):
         try:
-            import json
-            import uuid
-
             content_str = response.content.strip()
             # Remove Markdown JSON wrapper if it exists
             if content_str.startswith("```json") and content_str.endswith("```"):
@@ -78,8 +79,8 @@ async def call_model(
                         "id": f"call_{uuid.uuid4().hex[:8]}",
                     }
                 ]
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Failed to parse raw JSON tool call from model response: %s", e)
 
     # Handle the case when it's the last step and the model still wants to use a tool
     if state.is_last_step and response.tool_calls:
@@ -104,7 +105,7 @@ async def regex_precheck(
     report = check_regex_patterns(state.raw_log)
     if report:
         # If high confidence, bypass LLM and end graph
-        if report.get("confidence") == "high":
+        if report.get("confidence", 0) >= 0.8:
             return {"messages": [AIMessage(content=json.dumps(report, indent=2))]}
 
         # If medium/low confidence, inject a guide message for the LLM
@@ -170,14 +171,7 @@ async def review_analysis(state: State, runtime: Runtime[Context]) -> Dict[str, 
     response = await model.ainvoke([{"role": "user", "content": prompt}])
 
     try:
-        # Heuristic for JSON extraction from model output
-        content = response.content
-        if "```json" in content:
-            content = content.split("```json")[-1].split("```")[0]
-        elif "```" in content:
-            content = content.split("```")[-1].split("```")[0]
-
-        review_data = json.loads(content.strip())
+        review_data = extract_json_from_markdown(response.content)
 
         if not review_data.get("is_approved", True):
             feedback = review_data.get("feedback", "Please refine the analysis.")

@@ -26,6 +26,8 @@ dependencies = [
     "langchain-google-genai>=4.2.1",
     "isort>=8.0.1",
     "langchain-google-vertexai>=3.2.2",
+    "streamlit>=1.56.0",
+    "nest-asyncio>=1.6.0",
 ]
 
 

@@ -6,22 +6,18 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from langchain_core.messages import HumanMessage
 
 from react_agent.context import Context
 from react_agent.db import init_db, is_processed, save_error, save_result, summary
 from react_agent.graph import graph
+from react_agent.utils import extract_json_from_markdown
 
 logger = logging.getLogger(__name__)
 
 
 def _parse_result_json(content: str) -> dict:
-    """Extract JSON dict from LLM response content."""
-    if "```json" in content:
-        content = content.split("```json")[-1].split("```")[0]
-    elif "```" in content:
-        content = content.split("```")[1].split("```")[0]
-    return json.loads(content.strip())
+    """Extract JSON dict from LLM response content. Returns raw content dict on parse failure."""
+    return extract_json_from_markdown(content)
 
 
 async def _process_one(
@@ -35,11 +31,9 @@ async def _process_one(
 
     inputs = {
         "messages": [
-            HumanMessage(
-                content=(
-                    "Analyze this Airflow log and find the root cause. "
-                    f"Please provide a detailed JSON report: {raw_log}"
-                )
+            (
+                "user",
+                f"Analyze this Airflow log and find the root cause. Please provide a detailed JSON report: {raw_log}",
             )
         ],
         "raw_log": raw_log,
@@ -66,9 +60,9 @@ async def run_batch(
     log_dir: str = "error_logs",
     months: Optional[list[str]] = None,
     # model options:
-    #   VertexAI (default) : "google_vertexai/gemini-2.0-flash-001"
-    #   Local Ollama       : "ollama/qwen2.5-coder:7b"
-    model: str = "google_vertexai/gemini-2.0-flash-001",
+    #   Local Ollama (default)     : "ollama/qwen2.5-coder:7b"
+    #   Google AI Studio           : "google_genai/gemini-2.5-flash"
+    model: str = "ollama/qwen2.5-coder:7b",
     db_path: str = "batch_results.db",
 ) -> None:
     """Scan log files and run the agent sequentially (one at a time)."""

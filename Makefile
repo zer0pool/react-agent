@@ -1,4 +1,4 @@
-.PHONY: all format lint test tests test_watch integration_tests docker_tests help extended_tests
+.PHONY: all format lint test tests test_watch integration_tests docker_tests help extended_tests ui
 
 # Default target executed when no arguments are given to make.
 all: help
@@ -30,6 +30,9 @@ phoenix:
 
 run:
 	export PYTHONPATH=$PYTHONPATH:$(pwd)/src && .venv/bin/python3 test_agent.py
+
+ui:
+	export PYTHONPATH=$PYTHONPATH:$(pwd)/src && .venv/bin/streamlit run app.py --server.headless true
 
 ######################
 # LINTING AND FORMATTING
@@ -75,4 +78,5 @@ help:
 	@echo 'test_watch                   - run unit tests in watch mode'
 	@echo 'phoenix                      - start Arize Phoenix dashboard'
 	@echo 'run                          - run the agent with monitoring enabled'
+	@echo 'ui                           - start Streamlit web UI (app.py)'
 

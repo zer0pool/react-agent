@@ -43,4 +43,9 @@ class Context:
                 continue
 
             if getattr(self, f.name) == f.default:
-                setattr(self, f.name, os.environ.get(f.name.upper(), f.default))
+                env_val = os.environ.get(f.name.upper())
+                if env_val is not None:
+                    try:
+                        setattr(self, f.name, f.type(env_val))
+                    except (TypeError, ValueError):
+                        setattr(self, f.name, env_val)

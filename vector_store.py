@@ -22,9 +22,13 @@ def prepare_hybrid_indices(file_path="data/error_definitions.json"):
     metadata_list = []
 
     for item in error_definitions:
-        # 검색 품질을 높이기 위해 ID, 설명, 예시를 합친 텍스트 생성
-        combined_text = f"{item['error_id']} {item['description']} " + " ".join(
-            item.get("representative_examples", [])
+        # 검색 품질을 높이기 위해 ID, 설명, 키워드, 근본원인, 예시를 합친 텍스트 생성
+        keywords_text = " ".join(item.get("keywords", []))
+        combined_text = (
+            f"{item['error_id']} {item['description']} "
+            f"{item.get('root_cause', '')} "
+            f"{keywords_text} "
+            + " ".join(item.get("representative_examples", []))
         )
         corpus.append(combined_text)
 
@@ -33,7 +37,7 @@ def prepare_hybrid_indices(file_path="data/error_definitions.json"):
             {
                 "error_id": item["error_id"],
                 "category": item["category"],
-                "resolution": item["resolution_step"],
+                "resolution": " | ".join(item.get("resolution_steps", [])),
             }
         )
 

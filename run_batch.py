@@ -4,9 +4,15 @@ import argparse
 import asyncio
 import logging
 
+import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# langchain-google-genai reads GOOGLE_API_KEY
+if not os.environ.get("GOOGLE_API_KEY") and os.environ.get("GEMINI_API_KEY"):
+    os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
 
 
 def parse_args() -> argparse.Namespace:
@@ -18,11 +24,11 @@ def parse_args() -> argparse.Namespace:
     group.add_argument("--all", action="store_true", help="Process all months")
 
     # Model options:
-    #   VertexAI (default) : "google_vertexai/gemini-2.0-flash-001"
-    #   Local Ollama       : "ollama/qwen2.5-coder:7b"
+    #   Local Ollama (default)     : "ollama/qwen2.5-coder:7b"
+    #   Google AI Studio           : "google_genai/gemini-2.5-flash"
     p.add_argument(
-        "--model", default="google_vertexai/gemini-2.0-flash-001",
-        help="LLM to use (default: google_vertexai/gemini-2.0-flash-001)",
+        "--model", default="ollama/qwen2.5-coder:7b",
+        help="LLM to use (default: ollama/qwen2.5-coder:7b)",
     )
     p.add_argument(
         "--log-dir", default="error_logs",

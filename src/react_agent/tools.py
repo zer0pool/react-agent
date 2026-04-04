@@ -31,7 +31,7 @@ except Exception as e:
     indices_loaded = False
 
 
-def hybrid_search(query: str, top_k: int = 2) -> str:
+def hybrid_search(query: str, top_k: int = 3) -> str:
     """Combines BM25S and ChromaDB vector search results."""
     if not indices_loaded:
         return "Indices not loaded. Please run vectore_store.py first."
@@ -57,7 +57,7 @@ def hybrid_search(query: str, top_k: int = 2) -> str:
     for doc in docs:
         unique_contexts.add(f"[Semantic Match] {doc}")
 
-    result = "\\n\\n".join(list(unique_contexts))
+    result = "\n\n".join(list(unique_contexts))
     logger.info(f"✨ hybrid_search combined {len(unique_contexts)} unique results")
     return result
 
@@ -94,7 +94,7 @@ def read_failed_source_code(file_path: str, line_number: int) -> str:
             end = min(len(lines), line_number + window)
             code_snippet = "".join(lines[start:end])
             logger.info(f"📝 Extracted code snippet from line {start} to {end}")
-            return f"--- Code Snippet ({file_path}) ---\\n{code_snippet}"
+            return f"--- Code Snippet ({file_path}) ---\n{code_snippet}"
 
         logger.info(f"📝 Returning first 100 lines of {file_path}")
         return "".join(lines[:100])
@@ -104,4 +104,4 @@ def read_failed_source_code(file_path: str, line_number: int) -> str:
         return error_msg
 
 
-TOOLS: List[Callable[..., Any]] = [search_error_guide, read_failed_source_code]
+TOOLS: List[Callable[..., Any]] = [search_error_guide]

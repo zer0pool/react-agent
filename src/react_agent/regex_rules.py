@@ -13,7 +13,7 @@ KNOWN_ERRORS: List[Dict[str, Any]] = [
             "technical_root_cause": "The service account lacks the required IAM roles to access the resource.",
             "evidence_line": "google.api_core.exceptions.Forbidden: 403",
             "resolution_step": "Check IAM permissions for the Service Account. Ensure it has roles/bigquery.dataViewer or equivalent.",
-            "confidence": "high",
+            "confidence": 0.9,
         },
     },
     {
@@ -24,7 +24,7 @@ KNOWN_ERRORS: List[Dict[str, Any]] = [
             "technical_root_cause": "The worker failed to reach the database within the configured timeout period.",
             "evidence_line": "TimeoutError: Database connection timeout",
             "resolution_step": "Verify DB network firewall rules and ensure the database is not overloaded.",
-            "confidence": "high",
+            "confidence": 0.9,
         },
     },
     {
@@ -35,7 +35,7 @@ KNOWN_ERRORS: List[Dict[str, Any]] = [
             "technical_root_cause": "The connection was interrupted by the peer.",
             "evidence_line": "Connection lost",
             "resolution_step": "Retry the operation or check network stability.",
-            "confidence": "medium",
+            "confidence": 0.5,
         },
     },
 ]

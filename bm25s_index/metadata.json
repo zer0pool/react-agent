@@ -2,101 +2,101 @@
   {
     "error_id": "E001",
     "category": "DEPENDENCY_ISSUES",
-    "resolution": "Add the missing package to your requirements.txt or rebuild the Docker image."
+    "resolution": "Identify the missing module name from the error message (e.g., 'xgboost', 'statsmodels', 'db-dtypes') | Check if there's a pip dependency conflict error indicating version incompatibilities | For self-scheduling jobs: Update requirements.txt with exact version (e.g., package==1.2.3) | For managed jobs: Submit 1:1 inquiry requesting package installation | If dependency conflict: Update requirements.txt to resolve conflicts (pip check, pipdeptree) | Test locally: Create fresh virtual environment, install all dependencies, run script | Re-deploy job to Airflow environment | Request job re-execution through 1:1 inquiry"
+  },
+  {
+    "error_id": "E002",
+    "category": "DEPENDENCY_ISSUES",
+    "resolution": "Check if data of reference table was updated if you set reference tables when you update job | Verify the upstream job responsible for updating the triggering table executed successfully | Check the fin history (update history) of the reference table | If you want to work regardless of the triggering table update, remove the table from 'trigger_tables' in Metadata.yaml | Verify the triggering table configuration is correct | Request job re-execution through 1:1 inquiry after verifying upstream job status"
+  },
+  {
+    "error_id": "E003",
+    "category": "LOGIC_ERRORS",
+    "resolution": "Examine the Python script (job.py) at the specified line number | Ensure the variable is always assigned a value before it's used | Check conditional statements or try-except blocks that might skip variable initialization | Verify that all upstream data processing steps correctly produce the data intended for the variable | An empty or unexpected input might prevent it from being initialized | Add debugging: Temporarily add print statements or logging to trace the value of the variable or related variables | Check for typos in the variable name | Re-deploy the updated job and request a re-execution"
+  },
+  {
+    "error_id": "E004",
+    "category": "LOGIC_ERRORS",
+    "resolution": "Examine the error message to identify which column is missing | Review the DataFrame's schema using df.info() and df.columns.tolist() | Check if the column name has a typo (case sensitivity, extra spaces, underscores) | Verify upstream data processing steps that should create or rename the column | Check if there's conditional logic that might prevent the column from being created | Look for errors in data loading or merging operations that could lead to missing columns | Test locally with representative input data to reproduce the error | Correct the column name, ensure it's created, or update the code to use the correct column name | Re-deploy the job and request a re-execution"
+  },
+  {
+    "error_id": "E005",
+    "category": "LOGIC_ERRORS",
+    "resolution": "Review the date calculation logic in the script | Examine the line where the date object is being created | Identify the arithmetic operation causing the invalid value (e.g., today.month-1) | Use a robust method to calculate the new date | Recommended: Use dateutil.relativedelta for safe date arithmetic: from dateutil.relativedelta import relativedelta; new_date = today - relativedelta(months=1) | Alternative: Implement custom logic that wraps around years (if month-1 is 0, set month to 12 and decrement year) | Test edge cases specifically, like January (where month-1 would be 0) | Correct the date calculation, re-deploy the job, and request a re-execution"
+  },
+  {
+    "error_id": "E006",
+    "category": "LOGIC_ERRORS",
+    "resolution": "Locate the specific SQL query causing error in DAG or task logs | Copy the exact query and error message | Test in Superset console with sample data to isolate the issue | Review for common issues: |   - Typos in table names, column names, or function names |   - Missing commas in SELECT lists or WHERE clauses |   - Mismatched parentheses in complex expressions |   - Incorrect data types in comparisons or functions |   - References to dropped tables or columns (check schema) |   - Invalid date/timestamp formats |   - Unquoted or incorrectly quoted identifiers | Fix the identified issues in the query | Test corrected query in Superset console with full data | Update the SQL query within Airflow DAG or configuration | Redeploy the job | Request job re-execution through 1:1 inquiry"
+  },
+  {
+    "error_id": "E007",
+    "category": "LOGIC_ERRORS",
+    "resolution": "Identify which dynamically named column is missing from the error | Check the expected hour or time partition value that should have generated the column | Verify upstream data sources to confirm that data for the relevant hour exists | Review the time logic for determining the current hour or constructing the column name | Check for data loading or filtering steps that might exclude necessary hourly data | Add column existence check before access: if f'hour_gmt_{hour}' in df.columns | Implement default handling for missing hourly columns if appropriate | Test locally with debug logging to trace the DataFrame's state before the KeyError | Update job to handle missing hourly data or fix data generation logic | Re-deploy and request re-execution"
+  },
+  {
+    "error_id": "E008",
+    "category": "RESOURCE_CONSTRAINTS",
+    "resolution": "Review the query to identify which table is causing the throughput issue | Check if the query is doing a full table scan or processing excessive data | Apply optimization strategies: |   - Rather than extracting and overwriting data for entire period, append data for required period to existing table |   - Extract only the required period and columns |   - Divide the table by purpose/register multiple scheduling jobs instead of containing all columns |   - Write query logic efficiently: Use 'JOIN' after applying 'WHERE' and 'GROUP BY' |   - Add date range filters in WHERE clauses to limit data processed |   - Use partition pruning by filtering on partition columns | Test optimized query in Superset console to verify it stays within limits | Update job with optimized query | Redeploy and request re-execution"
+  },
+  {
+    "error_id": "E009",
+    "category": "RESOURCE_CONSTRAINTS",
+    "resolution": "Wait a few minutes and retry the job execution (this is typically a transient issue) | Check the Kubernetes cluster status for resource availability issues | Verify there are no widespread outages affecting the execution environment | If the issue persists across multiple retries, check if your job is requesting excessive resources | Review executor_config or kubernetes_executor_conf settings in your DAG | Consider adjusting resource requests/limits if they are set too high | Monitor for node capacity issues or scheduling problems | Submit 1:1 inquiry to request job re-execution if issue doesn't resolve"
   },
   {
     "error_id": "E010",
-    "category": "PERMISSION",
-    "resolution": "Check the IAM roles for the service account and ensure it has access to both BigQuery and the underlying source (e.g., Google Drive)."
+    "category": "RESOURCE_CONSTRAINTS",
+    "resolution": "Review the query complexity and data volume being processed | Apply optimization strategies to reduce execution time: |   - Append data for required period to existing table rather than full overwrite |   - Extract only the required period and columns |   - Divide the table by purpose/register multiple scheduling jobs |   - Write query logic efficiently: Use 'JOIN' after applying 'WHERE' and 'GROUP BY' |   - Add date range filters to limit data processed |   - Use partitioning and clustering for better performance | Test optimized query in Superset console to verify it completes within time limits | Consider increasing timeout if optimization is not possible and query is necessary | Update job with optimized query | Redeploy and request re-execution"
+  },
+  {
+    "error_id": "E011",
+    "category": "PERMISSION_ERRORS",
+    "resolution": "Identify which resource (BigQuery table, S3 bucket, etc.) cannot be accessed | Check the specific permission or IAM role that is missing from the error message | Verify the service account being used by the Airflow task | Request the platform team to grant the necessary IAM permissions | If using self-scheduling jobs, ensure your service account has appropriate roles | Common roles needed: BigQuery Data Viewer, BigQuery Data Editor, Storage Object Viewer, etc. | After permissions are granted, request job re-execution through 1:1 inquiry | Test access permissions manually if possible before re-executing"
   },
   {
     "error_id": "E012",
     "category": "SCHEMA_ISSUES",
-    "resolution": "Align the column names and types between the query and the target table."
+    "resolution": "Extract the schema comparison error from the logs to identify mismatch details | Check source table schema: SELECT * FROM project.dataset.INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'source_table' | Check destination table schema: SELECT * FROM project.dataset.INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'dest_table' | Compare schemas and identify differences: missing columns, extra columns, data type mismatches, column name differences, column order differences | Fix the mismatch by one of these methods: |   - Method A: Modify query to match destination schema (add CAST, rename columns, drop extra columns) |   - Method B: Alter destination table to accept new schema (if acceptable) |   - Method C: Use CREATE OR REPLACE TABLE to overwrite entire table with new schema | Test corrected query in Superset console with sample data | Update job with corrected query or table alteration | Redeploy and re-execute"
   },
   {
     "error_id": "E013",
     "category": "SCHEMA_ISSUES",
-    "resolution": "Explicitly define the schema instead of relying on automatic inference."
+    "resolution": "Review DataFrame schema using df.info() and df.head() to identify problematic columns | Look for columns with ambiguous types (e.g., 'object' columns containing mixed data) | Check for nested structures (lists, dicts) in the DataFrame | Handle mixed types: Ensure each column has a consistent data type | Convert DataFrame columns to appropriate types before upload using df.astype() or pd.to_datetime() | Handle nested data: Flatten lists/dicts to separate columns or use STRUCT/ARRAY types in BigQuery schema | Instead of relying on automatic schema inference, provide explicit schema using SchemaField objects | Test data conversion with sample data reflecting full range of expected types | Update job with pre-processed data and explicit schema | Re-deploy and re-execute"
   },
   {
     "error_id": "E014",
     "category": "DELIVERY_ERRORS",
-    "resolution": "Check network latency or increase the timeout setting in the operator."
+    "resolution": "Check the destination type of your job (external storage, BigQuery, etc.) | Verify that query result is being updated to external storage if destination is external storage | Check the size of the result set being delivered (may be too large) | Review network connectivity to the destination system | Check if the destination system is experiencing slowness or issues | Consider optimizing the query to reduce result set size | Increase timeout value if appropriate for the job's requirements | For external storage, check if the storage service has rate limits or throttling | Request job re-execution through 1:1 inquiry after addressing the issue"
+  },
+  {
+    "error_id": "E015",
+    "category": "INFRASTRUCTURE_ERRORS",
+    "resolution": "Check the full Kubernetes Pod logs (not just Airflow task logs) for specific error messages | Look for container exit codes, OOMKilled events, or initialization failures | Review executor_config or kubernetes_executor_conf settings in your DAG | Check resource requests and limits: ensure pod's requested CPU and memory are sufficient | Verify volume mounts (especially EXTRA_FILES) are correctly configured and accessible | Confirm the container image can be pulled successfully from the registry | Investigate Kubernetes cluster health: node capacity, networking issues, cloud provider status | If the problem is intermittent, try re-running the task | If issue persists, escalate to platform team or Kubernetes administrators | Request job re-execution through 1:1 inquiry after infrastructure issues are resolved"
+  },
+  {
+    "error_id": "E016",
+    "category": "DELIVERY_ERRORS",
+    "resolution": "Check BigQuery service status via Google Cloud Status Dashboard | Verify network connectivity from Airflow environment to Google Cloud endpoints | Review BigQuery quotas to check if hitting API rate limits (tables.get calls, etc.) | If hitting quotas, consider requesting a quota increase or optimizing operations to reduce API calls | For transient issues, wait a short period and re-run the job | Check if there are concurrent jobs overwhelming the API | Review the job's BigQuery usage patterns for optimization opportunities | Implement error handling to distinguish between quota errors and other failures | Request job re-execution through 1:1 inquiry after verifying service health"
+  },
+  {
+    "error_id": "E017",
+    "category": "DELIVERY_ERRORS",
+    "resolution": "Review the full error logs and traceback for specific error details | Identify the external system where delivery failed (check destination type in job configuration) | Check if the external system is experiencing service issues or outages | Verify network connectivity to the external system | Check if the data format being delivered is compatible with the external system requirements | Review authentication credentials or API keys for the external system | Check if the external system has sufficient storage capacity | If the issue is unclear, collect all relevant error information and logs | Submit 1:1 inquiry with detailed error information for investigation | Request job re-execution after the issue is identified and resolved"
   },
   {
     "error_id": "E018",
     "category": "LOGIC_ERRORS",
-    "resolution": "Verify the path or table name and ensure it was created in previous steps."
+    "resolution": "Identify which resource is not found from the error message (file path, table name, dataset name) | For files: Double-check the file path against the expected location in the execution environment | For tables/datasets: Verify the resource exists in the correct project and dataset | Check for typos in the resource name or path | For files: Confirm the file was correctly staged or mounted in the execution environment | For files: Check file permissions and ensure the Airflow task can read the file | Be aware of the current working directory of the Airflow task (use absolute paths if needed) | For tables: Use Superset console to verify the table/dataset exists and is accessible | Check if the resource was recently deleted or renamed | Correct the path or name, or ensure the resource exists, then redeploy and re-execute"
+  },
+  {
+    "error_id": "E019",
+    "category": "LOGIC_ERRORS",
+    "resolution": "Identify the Jupyter-specific code from the error message (cd, get_ipython, etc.) | If the command is for installing dependencies (e.g., get_ipython().system('pip install')): |   - Remove the installation from the script |   - Manage dependencies through requirements.txt instead |   - Do not try to install packages at runtime within the job | If it's a shell command (like cd): |   - Replace with Python equivalent (e.g., os.chdir('/path/to/directory') instead of cd /path) |   - Or use subprocess module: subprocess.run(['ls', '-l']) or subprocess.run('ls -l', shell=True) |   - Be cautious with shell=True due to security implications | If the code is purely for interactive debugging or environment setup, remove it entirely | Ensure development and testing is done in environment matching production execution | Re-deploy the job and request a re-execution"
   },
   {
     "error_id": "E020",
-    "category": "RESOURCE_LIMITS",
-    "resolution": "Increase the memory limit of the container or optimize the code to handle data in smaller chunks."
-  },
-  {
-    "error_id": "E021",
-    "category": "QUOTA_ISSUES",
-    "resolution": "Implement exponential backoff or request a quota increase from the cloud provider console."
-  },
-  {
-    "error_id": "E022",
-    "category": "NETWORK_ISSUES",
-    "resolution": "Check if the DB server is running and verify firewall/security group rules for the worker IP."
-  },
-  {
-    "error_id": "E023",
-    "category": "RESOURCE_LIMITS",
-    "resolution": "Clean up the /tmp directory or increase the disk size of the worker/PVC."
-  },
-  {
-    "error_id": "E024",
-    "category": "LOGIC_ERRORS",
-    "resolution": "Check the SQL string for missing commas, incorrect keywords, or unclosed quotes."
-  },
-  {
-    "error_id": "E025",
-    "category": "NETWORK_ISSUES",
-    "resolution": "Update the CA certificates in the environment or check if the target's certificate is expired."
-  },
-  {
-    "error_id": "E026",
-    "category": "SPARK_ERRORS",
-    "resolution": "Check executor memory settings or increase the number of retries for Spark tasks."
-  },
-  {
-    "error_id": "E027",
-    "category": "DATA_QUALITY",
-    "resolution": "Inspect the source data for unexpected NULL values or update the target table schema."
-  },
-  {
-    "error_id": "E028",
-    "category": "PERMISSION",
-    "resolution": "Refresh the service account token or update the connection credentials in Airflow."
-  },
-  {
-    "error_id": "E029",
-    "category": "INFRASTRUCTURE",
-    "resolution": "The task should be retried automatically. If it happens frequently, check pod priority settings."
-  },
-  {
-    "error_id": "E030",
-    "category": "DATABASE",
-    "resolution": "Reduce parallelism for this task or check for long-running transactions locking the same tables."
-  },
-  {
-    "error_id": "E031",
-    "category": "CONFIGURATION",
-    "resolution": "Define the missing environment variable in the Airflow deployment or Dockerfile."
-  },
-  {
-    "error_id": "E032",
-    "category": "DATA_QUALITY",
-    "resolution": "Verify the source file integrity and check for unexpected delimiters or header changes."
-  },
-  {
-    "error_id": "E033",
-    "category": "STORAGE_ISSUES",
-    "resolution": "Check if multiple processes are trying to write to the same GCS object simultaneously."
+    "category": "COMMON",
+    "resolution": "Identify the missing environment variable name from the error message (e.g., JUPYTERHUB_USER) | Check if the variable is specific to Airflow environment or another platform (e.g., JupyterHub) | If it's Airflow-specific: Ensure it's properly configured in the DAG definition |   - Use the env parameter in BashOperator or PythonOperator |   - Or configure via Airflow Variables | If the variable is only relevant in JupyterHub and not needed in Airflow, remove the code that tries to access it | For robustness, consider using os.getenv('VARIABLE_NAME', 'default_value') to provide a fallback |   - Or use os.getenv('VARIABLE_NAME') followed by an explicit check for None | Update the Airflow DAG/configuration or the script | Re-deploy the job and request a re-execution"
   }
 ]
