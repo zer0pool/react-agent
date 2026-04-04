@@ -11,7 +11,7 @@ def render(selected_model: str) -> None:
         "Airflow Log",
         value=st.session_state.get("log_input", ""),
         height=220,
-        placeholder="Airflow 에러 로그를 붙여넣으세요...",
+        placeholder="Paste Airflow error log here...",
     )
 
     col1, col2 = st.columns([1, 6])
@@ -26,7 +26,7 @@ def render(selected_model: str) -> None:
         return
 
     if not log_text.strip():
-        st.warning("로그를 입력하세요.")
+        st.warning("Please enter a log.")
         return
 
     steps_placeholder = st.empty()

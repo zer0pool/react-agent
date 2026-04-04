@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(.venv/bin/python -m pip install streamlit nest_asyncio -q)",
+      "Bash(uv --version)",
+      "Bash(uv add:*)",
+      "Bash(.venv/bin/python -c \"import streamlit; import nest_asyncio; print\\('OK'\\)\")",
+      "Bash(curl -s http://localhost:8502/_stcore/health)",
+      "Bash(curl -s \"http://localhost:8502/\")",
+      "Bash(pkill -f \"streamlit run\")",
+      "Bash(curl -s http://localhost:11434/api/tags)",
+      "Bash(python3 -m json.tool)"
+    ]
+  }
+}

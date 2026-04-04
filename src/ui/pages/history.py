@@ -12,12 +12,12 @@ def render() -> None:
     history = load_ui_history(db)
 
     if not history:
-        st.info("아직 분석 기록이 없습니다. Analyze 탭에서 로그를 분석하세요.")
+        st.info("No history yet. Analyze a log from the Analyze tab.")
         return
 
     col1, col2 = st.columns([6, 1])
-    col1.caption(f"총 {len(history)}건 (최근 100건)")
-    if col2.button("전체 삭제", type="secondary"):
+    col1.caption(f"{len(history)} records (latest 100)")
+    if col2.button("Clear All", type="secondary"):
         delete_ui_history(db)
         st.rerun()
 
@@ -42,6 +42,6 @@ def render() -> None:
                     st.markdown(f"{i}. {step}")
             with st.expander("Full JSON"):
                 st.json(result)
-            if st.button("이 로그 다시 분석", key=f"rerun_{row['id']}"):
+            if st.button("Re-analyze this log", key=f"rerun_{row['id']}"):
                 st.session_state["log_input"] = row["raw_log"]
                 st.rerun()

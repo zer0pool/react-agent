@@ -63,7 +63,7 @@ with st.sidebar:
     st.header("Settings")
     selected_model = st.selectbox(
         "Model", AVAILABLE_MODELS, index=0,
-        help="provider/model-name 형식. ollama 모델은 로컬에서 실행 중이어야 합니다.",
+        help="Format: provider/model-name. Ollama models must be running locally.",
     )
 
     st.divider()
@@ -91,7 +91,7 @@ with st.sidebar:
                         st.session_state["log_input"] = f.read()
                     st.rerun()
     except PermissionError:
-        st.warning("접근 권한이 없습니다.")
+        st.warning("Permission denied.")
 
     st.divider()
     st.caption("Airflow Error Analyzer v0.1")
