@@ -15,7 +15,7 @@ if not os.environ.get("GOOGLE_API_KEY") and os.environ.get("GEMINI_API_KEY"):
 
 # ── UI modules (imported after sys.path setup) ────────────────────────────────
 from ui.db import get_db
-from ui.pages import analyze, batch, history
+from ui.pages import analyze, batch, clustering, history
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -99,7 +99,9 @@ with st.sidebar:
 # ── Main tabs ─────────────────────────────────────────────────────────────────
 
 st.title("Airflow Error Analyzer")
-tab_analyze, tab_history, tab_batch = st.tabs(["Analyze", "History", "Batch Results"])
+tab_analyze, tab_history, tab_batch, tab_cluster = st.tabs(
+    ["Analyze", "History", "Batch Results", "Cluster Analysis"]
+)
 
 with tab_analyze:
     analyze.render(selected_model)
@@ -109,3 +111,6 @@ with tab_history:
 
 with tab_batch:
     batch.render()
+
+with tab_cluster:
+    clustering.render(ERROR_LOGS_ROOT)

@@ -20,8 +20,16 @@ def parse_args() -> argparse.Namespace:
         description="Batch-analyze Airflow error logs with the ReAct agent."
     )
     group = p.add_mutually_exclusive_group(required=True)
-    group.add_argument("--month", metavar="MM", help="Process a single month (e.g. 03)")
-    group.add_argument("--all", action="store_true", help="Process all months")
+    group.add_argument(
+        "--month", metavar="YYYY/MM",
+        help="Process a specific month (e.g. 2025/03). Repeatable: --month 2025/01 --month 2025/02",
+        action="append", dest="months",
+    )
+    group.add_argument(
+        "--year", metavar="YYYY",
+        help="Process all months under a year (e.g. 2025)",
+    )
+    group.add_argument("--all", action="store_true", help="Process all years and months")
 
     # Model options:
     #   Local Ollama (default)     : "ollama/qwen2.5-coder:7b"
@@ -55,12 +63,11 @@ def main() -> None:
 
     from react_agent.batch import run_batch
 
-    months = [args.month] if args.month else None
-
     asyncio.run(
         run_batch(
             log_dir=args.log_dir,
-            months=months,
+            months=args.months,       # list or None
+            year=args.year,           # str or None
             model=args.model,
             db_path=args.db,
         )

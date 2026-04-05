@@ -28,6 +28,7 @@ dependencies = [
     "langchain-google-vertexai>=3.2.2",
     "streamlit>=1.56.0",
     "nest-asyncio>=1.6.0",
+    "plotly>=6.6.0",
 ]
 
 

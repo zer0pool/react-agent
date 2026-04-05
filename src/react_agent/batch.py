@@ -56,9 +56,50 @@ async def _process_one(
         return "failed"
 
 
+def _collect_month_dirs(base: Path, year: Optional[str], months: Optional[list[str]]) -> list[tuple[Path, str]]:
+    """Return list of (month_dir, label) under base.
+
+    Supports two layouts:
+      - New : error_logs/YYYY/MM/   → label "YYYY-MM"
+      - Old : error_logs/MM/        → label "MM"
+
+    Filtering:
+      months = ["2025/01", "2025/03"]  → specific year/month pairs
+      year   = "2025"                  → all months under that year
+      both None                        → everything
+    """
+    result: list[tuple[Path, str]] = []
+
+    for entry in sorted(base.iterdir()):
+        if not entry.is_dir():
+            continue
+
+        # New layout: entry is a year directory (4-digit)
+        if entry.name.isdigit() and len(entry.name) == 4:
+            yyyy = entry.name
+            if year and yyyy != year:
+                continue
+            for month_entry in sorted(entry.iterdir()):
+                if not month_entry.is_dir():
+                    continue
+                label = f"{yyyy}-{month_entry.name}"
+                if months and f"{yyyy}/{month_entry.name}" not in months:
+                    continue
+                result.append((month_entry, label))
+
+        # Old layout: entry is a month directory (2-digit)
+        elif entry.name.isdigit() and len(entry.name) == 2:
+            if months and entry.name not in months:
+                continue
+            result.append((entry, entry.name))
+
+    return result
+
+
 async def run_batch(
     log_dir: str = "error_logs",
     months: Optional[list[str]] = None,
+    year: Optional[str] = None,
     # model options:
     #   Local Ollama (default)     : "ollama/qwen2.5-coder:7b"
     #   Google AI Studio           : "google_genai/gemini-2.5-flash"
@@ -69,20 +110,16 @@ async def run_batch(
     conn = init_db(db_path)
     base = Path(log_dir)
 
-    # Collect month directories
-    if months:
-        month_dirs = [base / m for m in months]
-    else:
-        month_dirs = sorted(d for d in base.iterdir() if d.is_dir())
+    month_dirs = _collect_month_dirs(base, year, months)
 
     # Collect all candidate files
     all_files: list[tuple[Path, str]] = []
-    for month_dir in month_dirs:
+    for month_dir, label in month_dirs:
         if not month_dir.is_dir():
             logger.warning("Directory not found: %s", month_dir)
             continue
         for f in sorted(month_dir.glob("*.log")):
-            all_files.append((f, month_dir.name))
+            all_files.append((f, label))
 
     # Filter already processed
     pending = [(f, m) for f, m in all_files if not is_processed(conn, str(f))]
