@@ -7,6 +7,7 @@ Two modes:
 
 import json
 import os
+import sys
 
 import streamlit as st
 
@@ -29,6 +30,26 @@ from ui.db import (
 )
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _rebuild_index(def_path: str) -> tuple[bool, str]:
+    """Call prepare_hybrid_indices() from vector_store.py. Returns (ok, message)."""
+    # vector_store.py lives at the project root; ensure root is in sys.path
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    try:
+        import importlib
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "vector_store", os.path.join(root, "vector_store.py")
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.prepare_hybrid_indices(def_path)
+        return True, "Search index rebuilt successfully."
+    except Exception as exc:
+        return False, f"Index rebuild failed: {exc}"
+
 
 def _load_definitions(path: str) -> list[dict]:
     with open(path, encoding="utf-8") as f:
@@ -506,16 +527,33 @@ def _render_cluster_card(db, session_id: int, row: dict, options: list[str],
             key=f"edit_new_{session_id}_{cid}",
         )
 
+        rebuild_new = st.checkbox(
+            "Also rebuild search index (BM25S + ChromaDB) after applying",
+            value=True,
+            key=f"rebuild_new_{session_id}_{cid}",
+        )
+
         col_apply, col_reset = st.columns([2, 2])
         if col_apply.button("Apply — Add to error_definitions.json",
                             type="primary", key=f"apply_new_{session_id}_{cid}"):
             try:
                 new_def = json.loads(edited_json)
                 apply_new_definition(def_path, new_def)
-                st.success(
-                    f"✅ **{new_def['error_id']}** added to error_definitions.json.  \n"
-                    f"Re-run `vector_store.py` to rebuild the search index."
-                )
+                if rebuild_new:
+                    with st.spinner("Rebuilding search index..."):
+                        ok, msg = _rebuild_index(def_path)
+                    if ok:
+                        st.success(f"✅ **{new_def['error_id']}** added.  \n{msg}")
+                    else:
+                        st.warning(
+                            f"✅ **{new_def['error_id']}** added to error_definitions.json.  \n"
+                            f"⚠️ {msg}  \nRun `PYTHONPATH=src python vector_store.py` manually."
+                        )
+                else:
+                    st.success(
+                        f"✅ **{new_def['error_id']}** added to error_definitions.json.  \n"
+                        f"Run `PYTHONPATH=src python vector_store.py` to rebuild the search index."
+                    )
             except ValueError as e:
                 st.error(str(e))
             except json.JSONDecodeError as e:
@@ -572,6 +610,12 @@ def _render_cluster_card(db, session_id: int, row: dict, options: list[str],
             key=f"edit_upd_{session_id}_{cid}",
         )
 
+        rebuild_upd = st.checkbox(
+            "Also rebuild search index (BM25S + ChromaDB) after applying",
+            value=True,
+            key=f"rebuild_upd_{session_id}_{cid}",
+        )
+
         col_apply, col_reset = st.columns([2, 2])
         if col_apply.button(
             f"Apply — Update {confirmed} in error_definitions.json",
@@ -580,10 +624,21 @@ def _render_cluster_card(db, session_id: int, row: dict, options: list[str],
             try:
                 upd_def = json.loads(edited_json)
                 apply_to_existing(def_path, upd_def)
-                st.success(
-                    f"✅ **{confirmed}** updated in error_definitions.json.  \n"
-                    f"Re-run `vector_store.py` to rebuild the search index."
-                )
+                if rebuild_upd:
+                    with st.spinner("Rebuilding search index..."):
+                        ok, msg = _rebuild_index(def_path)
+                    if ok:
+                        st.success(f"✅ **{confirmed}** updated.  \n{msg}")
+                    else:
+                        st.warning(
+                            f"✅ **{confirmed}** updated in error_definitions.json.  \n"
+                            f"⚠️ {msg}  \nRun `PYTHONPATH=src python vector_store.py` manually."
+                        )
+                else:
+                    st.success(
+                        f"✅ **{confirmed}** updated in error_definitions.json.  \n"
+                        f"Run `PYTHONPATH=src python vector_store.py` to rebuild the search index."
+                    )
                 # Clear cached edit so next open shows fresh suggestion
                 st.session_state.pop(edit_key, None)
             except json.JSONDecodeError as e:
