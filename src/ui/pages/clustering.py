@@ -152,7 +152,7 @@ def _render_run(log_root: str, db) -> None:
         c1, c2, c3 = st.columns(3)
         eps = c1.slider("eps (cosine distance)", 0.05, 0.95, 0.30, 0.05,
                         help="Max neighbor distance. Lower = more clusters.")
-        min_samples = c2.slider("min_samples", 1, 20, 2, 1,
+        min_samples = c2.slider("min_samples", 10, 100, 10, 1,
                                 help="Min points to form a cluster core.")
         max_features = c3.select_slider("TF-IDF max_features",
                                         options=[200, 500, 1000, 2000, 5000], value=1000)

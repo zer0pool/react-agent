@@ -10,7 +10,8 @@
       "Bash(curl -s \"http://localhost:8502/\")",
       "Bash(pkill -f \"streamlit run\")",
       "Bash(curl -s http://localhost:11434/api/tags)",
-      "Bash(python3 -m json.tool)"
+      "Bash(python3 -m json.tool)",
+      "Bash(ps -o pid,lstart,cmd -p 92965)"
     ]
   }
 }
