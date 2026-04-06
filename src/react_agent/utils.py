@@ -1,6 +1,7 @@
 """Utility & helper functions."""
 
 import json
+import os
 
 from langchain.chat_models import init_chat_model
 from langchain_core.language_models import BaseChatModel
@@ -44,4 +45,9 @@ def load_chat_model(fully_specified_name: str) -> BaseChatModel:
         fully_specified_name (str): String in the format 'provider/model'.
     """
     provider, model = fully_specified_name.split("/", maxsplit=1)
-    return init_chat_model(model, model_provider=provider)
+    kwargs = {}
+    if provider == "google_vertexai":
+        if os.environ.get("GOOGLE_CLOUD_PROJECT"):
+            kwargs["project"] = os.environ["GOOGLE_CLOUD_PROJECT"]
+        kwargs["location"] = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+    return init_chat_model(model, model_provider=provider, **kwargs)

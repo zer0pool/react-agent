@@ -23,6 +23,8 @@ AVAILABLE_MODELS = [
     "ollama/qwen2.5-coder:1.5b",
     "ollama/qwen2.5-coder:7b",
     "ollama/llama3.1:latest",
+    "google_vertexai/gemini-2.0-flash-001",
+    "google_vertexai/gemini-2.5-flash-preview-04-17",
     "google_genai/gemini-2.5-flash",
     "google_genai/gemini-2.0-flash",
 ]
