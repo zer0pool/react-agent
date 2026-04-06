@@ -26,7 +26,7 @@ extended_tests:
 ######################
 
 phoenix:
-	.venv/bin/python3 -m phoenix.server.main serve
+	PHOENIX_LOGGING_LEVEL=warning .venv/bin/python3 -m phoenix.server.main serve
 
 run:
 	export PYTHONPATH=$PYTHONPATH:$(pwd)/src && .venv/bin/python3 test_agent.py

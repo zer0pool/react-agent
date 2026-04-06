@@ -29,6 +29,10 @@ dependencies = [
     "streamlit>=1.56.0",
     "nest-asyncio>=1.6.0",
     "plotly>=6.6.0",
+    "wrapt>=1.0.0,<2.0.0",
+    "arize-phoenix>=8.0.0",
+    "arize-phoenix-otel>=0.15.0",
+    "openinference-instrumentation-langchain>=0.1.61",
 ]
 
 

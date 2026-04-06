@@ -14,6 +14,7 @@ if not os.environ.get("GOOGLE_API_KEY") and os.environ.get("GEMINI_API_KEY"):
     os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
 
 # ── UI modules (imported after sys.path setup) ────────────────────────────────
+from react_agent.monitoring import init_monitoring
 from ui.db import get_db
 from ui.pages import analyze, batch, clustering, history
 
@@ -51,6 +52,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ── Session state ─────────────────────────────────────────────────────────────
+
+if "monitoring_initialized" not in st.session_state:
+    init_monitoring()
+    st.session_state["monitoring_initialized"] = True
 
 if "log_input" not in st.session_state:
     st.session_state["log_input"] = ""
